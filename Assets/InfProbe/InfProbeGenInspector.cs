@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEditor;
 
@@ -9,6 +10,16 @@ public class InfProbeGenInspector : Editor
     private Vector3 vOldAABBOrigin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
     private Vector3 vOldAABBExtents = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
     private Vector3 vOldPorbeSpacing = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+
+
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void BuildTets(float[] vertices, ulong numVert);
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong GetTetIndexCount();
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong[] GetTetIndices();
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void Cleanup();
 
 
     private void _generateProbes()
