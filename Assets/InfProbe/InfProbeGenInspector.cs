@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEditor;
@@ -13,13 +14,11 @@ public class InfProbeGenInspector : Editor
 
 
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void BuildTets(float[] vertices, ulong numVert);
+    private static extern bool TGBuildTets(float[] vertices, uint numVert);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern ulong GetTetIndexCount();
+    private static extern uint TGGetTetIndexCount();
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern ulong[] GetTetIndices();
-    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void Cleanup();
+    private static extern void TGGetTetIndices(uint[] vOut);
 
 
     private void _generateProbes()
@@ -52,19 +51,24 @@ public class InfProbeGenInspector : Editor
                 }
             }
 
-            //BuildTets(fPassProbes, (ulong)(fPassProbes.Length));
+            {
+                TGBuildTets(fPassProbes, (uint)(fPassProbes.Length));
 
-            //iLen = (int)GetTetIndexCount() >> 2;
-            //probeGen.vTetIndices = new TetIndex[iLen];
-            //ulong[] uRawTetIndices = GetTetIndices();
-            //for (int i = 0; i < iLen; ++i)
-            //{
-            //    probeGen.vTetIndices[i]._0 = (int)uRawTetIndices[i * 4 + 0];
-            //    probeGen.vTetIndices[i]._1 = (int)uRawTetIndices[i * 4 + 1];
-            //    probeGen.vTetIndices[i]._2 = (int)uRawTetIndices[i * 4 + 2];
-            //    probeGen.vTetIndices[i]._3 = (int)uRawTetIndices[i * 4 + 3];
-            //}
-            Cleanup();
+                iLen = (int)TGGetTetIndexCount();
+                uint[] uRawTetIndices = new uint[iLen];
+                TGGetTetIndices(uRawTetIndices);
+
+                iLen >>= 2;
+                probeGen.vTetIndices = new TetIndex[iLen];
+
+                for (int i = 0; i < iLen; ++i)
+                {
+                    probeGen.vTetIndices[i]._0 = (int)uRawTetIndices[i * 4 + 0];
+                    probeGen.vTetIndices[i]._1 = (int)uRawTetIndices[i * 4 + 1];
+                    probeGen.vTetIndices[i]._2 = (int)uRawTetIndices[i * 4 + 2];
+                    probeGen.vTetIndices[i]._3 = (int)uRawTetIndices[i * 4 + 3];
+                }
+            }
 
             vOldAABBOrigin = probeGen.transform.position;
             vOldAABBExtents = probeGen.vAABBExtents;
