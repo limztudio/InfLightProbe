@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.Rendering;
 
 [CustomEditor(typeof(InfProbeGen))]
 public class InfProbeGenInspector : Editor
@@ -91,7 +92,9 @@ public class InfProbeGenInspector : Editor
     {
         _generateProbes();
 
-        {
+        Handles.zTest = CompareFunction.Less;
+
+        { // render Tets
             Handles.color = Color.gray;
             foreach (var vTetIndex in probeGen.vTetIndices)
             {
@@ -106,7 +109,7 @@ public class InfProbeGenInspector : Editor
             }
         }
 
-        {
+        { // render Probes
             var vSize = new Vector3(0.2f, 0.2f, 0.2f);
 
             Handles.color = Color.magenta;
