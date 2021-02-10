@@ -107,7 +107,7 @@ public class InfProbeGenInspector : Editor
         }
 
         {
-            var vSize = new Vector3(2, 2, 2);
+            var vSize = new Vector3(0.2f, 0.2f, 0.2f);
 
             Handles.color = Color.magenta;
             foreach (var vProbe in probeGen.vProbes)
