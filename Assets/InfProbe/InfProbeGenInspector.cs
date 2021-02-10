@@ -103,6 +103,21 @@ public class InfProbeGenInspector : Editor
         _generateProbes();
 
         {
+            Handles.color = Color.gray;
+            foreach (var vTetIndex in probeGen.vTetIndices)
+            {
+                Handles.DrawLine(probeGen.vProbes[vTetIndex._0], probeGen.vProbes[vTetIndex._1]);
+                Handles.DrawLine(probeGen.vProbes[vTetIndex._0], probeGen.vProbes[vTetIndex._2]);
+                Handles.DrawLine(probeGen.vProbes[vTetIndex._0], probeGen.vProbes[vTetIndex._3]);
+
+                Handles.DrawLine(probeGen.vProbes[vTetIndex._1], probeGen.vProbes[vTetIndex._2]);
+                Handles.DrawLine(probeGen.vProbes[vTetIndex._1], probeGen.vProbes[vTetIndex._3]);
+
+                Handles.DrawLine(probeGen.vProbes[vTetIndex._2], probeGen.vProbes[vTetIndex._3]);
+            }
+        }
+
+        {
             var vSize = new Vector3(2, 2, 2);
 
             Handles.color = Color.magenta;
