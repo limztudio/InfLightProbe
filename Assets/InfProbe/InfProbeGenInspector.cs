@@ -29,19 +29,19 @@ public class InfProbeGenInspector : Editor
             var vAABBMax = probeGen.transform.position + probeGen.vAABBExtents;
 
             int iLen = 0;
-            for (float fZ = vAABBMin.z + probeGen.vProbeSpacing.z * 0.5f; fZ < vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
-                for (float fY = vAABBMin.y + probeGen.vProbeSpacing.y * 0.5f; fY < vAABBMax.y; fY += probeGen.vProbeSpacing.y)
-                    for (float fX = vAABBMin.x + probeGen.vProbeSpacing.x * 0.5f; fX < vAABBMax.x; fX += probeGen.vProbeSpacing.x)
+            for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
+                for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
+                    for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
                         ++iLen;
             probeGen.vProbes = new Vector3[iLen];
             float[] fPassProbes = new float[iLen * 3];
 
             iLen = 0;
-            for (float fZ = vAABBMin.z + probeGen.vProbeSpacing.z * 0.5f; fZ < vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
+            for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
             {
-                for (float fY = vAABBMin.y + probeGen.vProbeSpacing.y * 0.5f; fY < vAABBMax.y; fY += probeGen.vProbeSpacing.y)
+                for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
                 {
-                    for (float fX = vAABBMin.x + probeGen.vProbeSpacing.x * 0.5f; fX < vAABBMax.x; fX += probeGen.vProbeSpacing.x)
+                    for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
                     {
                         fPassProbes[iLen * 3 + 0] = fX;
                         fPassProbes[iLen * 3 + 1] = fY;
@@ -89,17 +89,6 @@ public class InfProbeGenInspector : Editor
 
     private void OnSceneGUI()
     {
-        { // render AABB
-            var vDisplayExtents = Handles.DoPositionHandle(probeGen.vAABBExtents + probeGen.transform.position, Quaternion.identity);
-            probeGen.vAABBExtents = vDisplayExtents - probeGen.transform.position;
-            probeGen.vAABBExtents.x = Mathf.Max(0, probeGen.vAABBExtents.x);
-            probeGen.vAABBExtents.y = Mathf.Max(0, probeGen.vAABBExtents.y);
-            probeGen.vAABBExtents.z = Mathf.Max(0, probeGen.vAABBExtents.z);
-
-            Handles.color = Color.yellow;
-            Handles.DrawWireCube(probeGen.transform.position, probeGen.vAABBExtents * 2);
-        }
-
         _generateProbes();
 
         {
@@ -123,6 +112,17 @@ public class InfProbeGenInspector : Editor
             Handles.color = Color.magenta;
             foreach (var vProbe in probeGen.vProbes)
                 Handles.DrawWireCube(vProbe, vSize);
+        }
+
+        { // render AABB
+            var vDisplayExtents = Handles.DoPositionHandle(probeGen.vAABBExtents + probeGen.transform.position, Quaternion.identity);
+            probeGen.vAABBExtents = vDisplayExtents - probeGen.transform.position;
+            probeGen.vAABBExtents.x = Mathf.Max(0, probeGen.vAABBExtents.x);
+            probeGen.vAABBExtents.y = Mathf.Max(0, probeGen.vAABBExtents.y);
+            probeGen.vAABBExtents.z = Mathf.Max(0, probeGen.vAABBExtents.z);
+
+            Handles.color = Color.yellow;
+            Handles.DrawWireCube(probeGen.transform.position, probeGen.vAABBExtents * 2);
         }
     }
 }
