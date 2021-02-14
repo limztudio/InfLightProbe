@@ -22,54 +22,83 @@ public class InfProbeGenInspector : Editor
     private static extern void TGGetTetIndices(uint[] vOut);
 
 
-    private void _generateProbes()
+    private void _generateTets()
+    {
+        var vAABBMin = probeGen.transform.position - probeGen.vAABBExtents;
+        var vAABBMax = probeGen.transform.position + probeGen.vAABBExtents;
+
+        int iLen = 0;
+        for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
+            for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
+                for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
+                    ++iLen;
+        probeGen.vProbes = new Vector3[iLen];
+        float[] fPassProbes = new float[iLen * 3];
+
+        iLen = 0;
+        for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
+        {
+            for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
+            {
+                for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
+                {
+                    fPassProbes[iLen * 3 + 0] = fX;
+                    fPassProbes[iLen * 3 + 1] = fY;
+                    fPassProbes[iLen * 3 + 2] = fZ;
+                    probeGen.vProbes[iLen++] = new Vector3(fX, fY, fZ);
+                }
+            }
+        }
+
+        {
+            TGBuildTets(fPassProbes, (uint)(fPassProbes.Length));
+
+            iLen = (int)TGGetTetIndexCount();
+            uint[] uRawTetIndices = new uint[iLen];
+            TGGetTetIndices(uRawTetIndices);
+
+            iLen >>= 2;
+            probeGen.vTetIndices = new TetIndex[iLen];
+
+            for (int i = 0; i < iLen; ++i)
+            {
+                probeGen.vTetIndices[i]._0 = (int)uRawTetIndices[i * 4 + 0];
+                probeGen.vTetIndices[i]._1 = (int)uRawTetIndices[i * 4 + 1];
+                probeGen.vTetIndices[i]._2 = (int)uRawTetIndices[i * 4 + 2];
+                probeGen.vTetIndices[i]._3 = (int)uRawTetIndices[i * 4 + 3];
+            }
+        }
+    }
+
+    private void _fillTriInfo(Vector3 vOrigin, Vector3 v0, Vector3 v1, Vector3 v2)
+    {
+
+    }
+    private void _fillDepthInfo()
+    {
+        foreach (var iTet in probeGen.vTetIndices)
+        {
+            { // 0 -> 1 2 3
+                _fillTriInfo(probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._3]);
+            }
+            { // 1 -> 0 2 3
+                _fillTriInfo(probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._3]);
+            }
+            { // 2 -> 0 1 3
+                _fillTriInfo(probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._3]);
+            }
+            { // 3 -> 0 1 2
+                _fillTriInfo(probeGen.vProbes[iTet._3], probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._2]);
+            }
+        }
+    }
+
+    private void _rebuildProbes()
     {
         if (vOldAABBOrigin != probeGen.transform.position || vOldAABBExtents != probeGen.vAABBExtents || vOldPorbeSpacing != probeGen.vProbeSpacing)
         {
-            var vAABBMin = probeGen.transform.position - probeGen.vAABBExtents;
-            var vAABBMax = probeGen.transform.position + probeGen.vAABBExtents;
-
-            int iLen = 0;
-            for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
-                for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
-                    for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
-                        ++iLen;
-            probeGen.vProbes = new Vector3[iLen];
-            float[] fPassProbes = new float[iLen * 3];
-
-            iLen = 0;
-            for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
-            {
-                for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
-                {
-                    for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
-                    {
-                        fPassProbes[iLen * 3 + 0] = fX;
-                        fPassProbes[iLen * 3 + 1] = fY;
-                        fPassProbes[iLen * 3 + 2] = fZ;
-                        probeGen.vProbes[iLen++] = new Vector3(fX, fY, fZ);
-                    }
-                }
-            }
-
-            {
-                TGBuildTets(fPassProbes, (uint)(fPassProbes.Length));
-
-                iLen = (int)TGGetTetIndexCount();
-                uint[] uRawTetIndices = new uint[iLen];
-                TGGetTetIndices(uRawTetIndices);
-
-                iLen >>= 2;
-                probeGen.vTetIndices = new TetIndex[iLen];
-
-                for (int i = 0; i < iLen; ++i)
-                {
-                    probeGen.vTetIndices[i]._0 = (int)uRawTetIndices[i * 4 + 0];
-                    probeGen.vTetIndices[i]._1 = (int)uRawTetIndices[i * 4 + 1];
-                    probeGen.vTetIndices[i]._2 = (int)uRawTetIndices[i * 4 + 2];
-                    probeGen.vTetIndices[i]._3 = (int)uRawTetIndices[i * 4 + 3];
-                }
-            }
+            _generateTets();
+            _fillDepthInfo();
 
             vOldAABBOrigin = probeGen.transform.position;
             vOldAABBExtents = probeGen.vAABBExtents;
@@ -90,7 +119,7 @@ public class InfProbeGenInspector : Editor
 
     private void OnSceneGUI()
     {
-        _generateProbes();
+        _rebuildProbes();
 
         Handles.zTest = CompareFunction.Less;
 
