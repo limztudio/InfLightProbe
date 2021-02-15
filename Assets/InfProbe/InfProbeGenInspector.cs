@@ -238,7 +238,7 @@ public class InfProbeGenInspector : Editor
         for (int i = 0, e = probeGen.vTetIndices.Length; i < e; ++i)
         {
             var iTet = probeGen.vTetIndices[i];
-            var iTetDepth = probeGen.vTetDepthMap[i];
+            ref var iTetDepth = ref probeGen.vTetDepthMap[i];
 
             { // 0 -> 1 2 3
                 _fillTriInfo(ref iTetDepth._0, probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._3]);
