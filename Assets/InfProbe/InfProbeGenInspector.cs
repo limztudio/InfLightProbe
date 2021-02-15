@@ -8,6 +8,10 @@ using UnityEngine.Rendering;
 [CustomEditor(typeof(InfProbeGen))]
 public class InfProbeGenInspector : Editor
 {
+    private const float RAY_COMP_EPSILON = 0.000001f;
+    private const int PROBE_RENDER_SIZE = 64;
+
+
     private InfProbeGen probeGen;
     private List<MeshFilter> meshList = new List<MeshFilter>();
 
@@ -99,6 +103,33 @@ public class InfProbeGenInspector : Editor
         }
     }
 
+    private void _rebuildSH(ref Camera camera, ref Cubemap texture, Vector3 vPos)
+    {
+        camera.transform.position = vPos;
+        camera.transform.rotation = Quaternion.identity;
+        camera.RenderToCubemap(texture);
+    }
+    private void _rebuildSHs()
+    {
+        var gObj = new GameObject("ProbeCamera");
+        var camera = gObj.AddComponent<Camera>();
+        var texture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
+
+        camera.allowHDR = false;
+        camera.allowMSAA = false;
+        camera.backgroundColor = Color.black;
+        camera.aspect = 1.0f;
+
+        for (int i = 0; i < probeGen.vProbes.Length; ++i)
+        {
+            var vPos = probeGen.vProbes[i];
+
+            _rebuildSH(ref camera, ref texture, vPos);
+        }
+
+        DestroyImmediate(gObj);
+    }
+
     private static ref byte _depthToIndex(ref TetDepth tetDepth, int iID)
     {
         switch (iID)
@@ -138,15 +169,12 @@ public class InfProbeGenInspector : Editor
     }
     private static bool _rayTriIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, ref float t)
     {
-        const float kEpsilon = 0.000001f;
-
-        // edges from v1 & v2 to v0.     
         Vector3 e1 = v1 - v0;
         Vector3 e2 = v2 - v0;
 
         Vector3 h = Vector3.Cross(ray.direction, e2);
         float a = Vector3.Dot(e1, h);
-        if ((a > -kEpsilon) && (a < kEpsilon))
+        if ((a > -RAY_COMP_EPSILON) && (a < RAY_COMP_EPSILON))
             return false;
 
         float f = 1.0f / a;
@@ -162,7 +190,7 @@ public class InfProbeGenInspector : Editor
             return false;
 
         float _t = f * Vector3.Dot(e2, q);
-        if (_t > kEpsilon)
+        if (_t > RAY_COMP_EPSILON)
         {
             t = _t;
             return true;
@@ -258,9 +286,8 @@ public class InfProbeGenInspector : Editor
     private void _rebuildProbes()
     {
         _generateTets();
-
+        _rebuildSHs();
         _findAllMeshes();
-
         _fillDepthInfo();
     }
 
