@@ -521,6 +521,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 514c41de76784bf459241b5cb406e148, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  shdSHIntegrator: {fileID: 7200000, guid: 05a2986cf13ba4540a3f693d3076f8b7, type: 3}
   vAABBExtents: {x: 4, y: 4, z: 4}
   vProbeSpacing: {x: 2, y: 2, z: 2}
   vProbes:

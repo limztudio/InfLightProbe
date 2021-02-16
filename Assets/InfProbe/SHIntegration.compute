@@ -1,0 +1,120 @@
+#pragma kernel CSMain
+
+
+#define DISP_MAP_SIZE 64
+#define GRUP_MAP_SIZE 32
+#define GRUP_MAX (DISP_MAP_SIZE / GRUP_MAP_SIZE)
+#define COFF_COUNT 9
+
+
+SamplerState sampLinear{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+
+TextureCube<float3> texEnv;
+RWBuffer<float3> bufCoeff;
+
+
+groupshared float3 bufTmpCoeffAcc[GRUP_MAP_SIZE][GRUP_MAP_SIZE][COFF_COUNT];
+
+
+float3 transformCubeDir(in uint n, in float3 dir){
+    switch(n){
+    case 0:
+        return float3(+dir.x, +dir.y, +dir.z);
+    case 1:
+        return float3(+dir.x, +dir.y, -dir.z);
+    case 2:
+        return float3(+dir.z, +dir.y, +dir.x);
+    case 3:
+        return float3(-dir.z, +dir.y, +dir.x);
+    case 4:
+        return float3(+dir.x, +dir.z, +dir.y);
+    case 5:
+        return float3(+dir.x, -dir.z, +dir.y);
+    default:
+        return dir;
+    }
+    return dir;
+}
+
+void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
+    // Cosine kernel
+    const float A0 = 3.141593f;
+    const float A1 = 2.095395f;
+    const float A2 = 0.785398f;
+
+    // Band 0
+    sh[0] = 0.282095f * A0 * color;
+
+    // Band 1
+    sh[1] = 0.488603f * n.y * A1 * color;
+    sh[2] = 0.488603f * n.z * A1 * color;
+    sh[3] = 0.488603f * n.x * A1 * color;
+
+    // Band 2
+    sh[4] = 1.092548f * n.x * n.y * A2 * color;
+    sh[5] = 1.092548f * n.y * n.z * A2 * color;
+    sh[6] = 0.315392f * (3.f * n.z * n.z - 1.f) * A2 * color;
+    sh[7] = 1.092548f * n.x * n.z * A2 * color;
+    sh[8] = 0.546274f * (n.x * n.x - n.y * n.y) * A2 * color;
+}
+
+
+[numthreads(GRUP_MAP_SIZE, GRUP_MAP_SIZE, 1)]
+void CSMain(
+    uint3 uGroupID : SV_GroupID,
+    uint3 uDispatchThreadID : SV_DispatchThreadID,
+    uint3 uGroupThreadID : SV_GroupThreadID,
+    uint GuroupIndex : SV_GroupIndex
+)
+{
+    float3 vUV = float3(
+        ((uDispatchThreadID.x / float(DISP_MAP_SIZE)) * 2.f) - 1.f,
+        ((uDispatchThreadID.y / float(DISP_MAP_SIZE)) * 2.f) - 1.f,
+        1.f
+        );
+    float fLenSq = dot(vUV, vUV);
+    float fLenInv = rsqrt(fLenSq);
+
+    vUV = vUV * fLenInv;
+    vUV = transformCubeDir(uDispatchThreadID.z, vUV);
+
+    float3 vColor = texEnv.SampleLevel(sampLinear, vUV, 0);
+    float fWeight = 4.f * fLenInv / fLenSq;
+
+    vColor *= fWeight;
+
+    float3 vSH[COFF_COUNT];
+    projectOntoSH(vUV, vColor, vSH);
+
+    [unroll]
+    for(uint i = 0; i < COFF_COUNT; ++i)
+        bufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.y][i] = vSH[i];
+    GroupMemoryBarrierWithGroupSync();
+
+    [unroll(GRUP_MAP_SIZE)]
+    for(uint y = GRUP_MAP_SIZE >> 1; y > 0; y >>= 1){
+        if(uGroupThreadID.y < y){
+            [unroll(GRUP_MAP_SIZE)]
+            for(uint x = GRUP_MAP_SIZE >> 1; x > 0; x >>= 1){
+                if(uGroupThreadID.x < x){
+                    [unroll]
+                    for(uint i = 0; i < COFF_COUNT; ++i)
+                        bufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.y][i] += bufTmpCoeffAcc[uGroupThreadID.x + x][uGroupThreadID.y + y][i];
+                }
+                GroupMemoryBarrierWithGroupSync();
+            }
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    if(uGroupThreadID.x == 0 && uGroupThreadID.y == 0){
+        [unroll]
+        for(uint i = 0; i < COFF_COUNT; ++i)
+            bufCoeff[(uGroupID.z * GRUP_MAX * GRUP_MAX) + (uGroupID.y * GRUP_MAX + uGroupID.x)] = bufTmpCoeffAcc[0][0][i];
+    }
+}

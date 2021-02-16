@@ -15,6 +15,8 @@ public class InfProbeGenInspector : Editor
     private InfProbeGen probeGen;
     private List<MeshFilter> meshList = new List<MeshFilter>();
 
+    private ComputeBuffer bufTmpBuffer;
+
 
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern bool TGBuildTets(float[] vertices, uint numVert);
@@ -108,6 +110,16 @@ public class InfProbeGenInspector : Editor
         camera.transform.position = vPos;
         camera.transform.rotation = Quaternion.identity;
         camera.RenderToCubemap(texture);
+
+        var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
+
+        probeGen.shdSHIntegrator.SetTexture(iKernel, "texEnv", texture);
+        probeGen.shdSHIntegrator.SetBuffer(iKernel, "bufCoeff", bufTmpBuffer);
+
+        probeGen.shdSHIntegrator.Dispatch(iKernel, PROBE_RENDER_SIZE >> 1, PROBE_RENDER_SIZE >> 1, 6);
+
+        //bufTmpBuffer.GetData();
+
     }
     private void _rebuildSHs()
     {
@@ -295,6 +307,8 @@ public class InfProbeGenInspector : Editor
     private void OnEnable()
     {
         probeGen = (InfProbeGen)target;
+
+        bufTmpBuffer = new ComputeBuffer(9, sizeof(float));
     }
 
     public override void OnInspectorGUI()
