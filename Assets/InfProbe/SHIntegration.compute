@@ -1,24 +1,22 @@
 #pragma kernel CSMain
 
 
-#define DISP_MAP_SIZE 64
-#define GRUP_MAP_SIZE 32
-#define GRUP_MAX (DISP_MAP_SIZE / GRUP_MAP_SIZE)
+#define MAP_SIZE 64
 #define COFF_COUNT 9
 
 
-SamplerState sampLinear{
+TextureCube<float3> TexEnv;
+SamplerState samplerTexEnv{
     Filter = MIN_MAG_MIP_LINEAR;
     AddressU = Wrap;
     AddressV = Wrap;
+    AddressW = Wrap;
 };
 
-
-TextureCube<float3> texEnv;
-RWBuffer<float3> bufCoeff;
+RWBuffer<float3> BufCoeff;
 
 
-groupshared float3 bufTmpCoeffAcc[GRUP_MAP_SIZE][GRUP_MAP_SIZE][COFF_COUNT];
+groupshared float3 BufTmpCoeffAcc[MAP_SIZE][COFF_COUNT];
 
 
 float3 transformCubeDir(in uint n, in float3 dir){
@@ -64,17 +62,17 @@ void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
 }
 
 
-[numthreads(GRUP_MAP_SIZE, GRUP_MAP_SIZE, 1)]
+[numthreads(MAP_SIZE, 1, 1)]
 void CSMain(
     uint3 uGroupID : SV_GroupID,
     uint3 uDispatchThreadID : SV_DispatchThreadID,
     uint3 uGroupThreadID : SV_GroupThreadID,
-    uint GuroupIndex : SV_GroupIndex
+    uint uGuroupIndex : SV_GroupIndex
 )
 {
     float3 vUV = float3(
-        ((uDispatchThreadID.x / float(DISP_MAP_SIZE)) * 2.f) - 1.f,
-        ((uDispatchThreadID.y / float(DISP_MAP_SIZE)) * 2.f) - 1.f,
+        ((uDispatchThreadID.x / float(MAP_SIZE)) * 2.f) - 1.f,
+        ((uDispatchThreadID.y / float(MAP_SIZE)) * 2.f) - 1.f,
         1.f
         );
     float fLenSq = dot(vUV, vUV);
@@ -83,7 +81,7 @@ void CSMain(
     vUV = vUV * fLenInv;
     vUV = transformCubeDir(uDispatchThreadID.z, vUV);
 
-    float3 vColor = texEnv.SampleLevel(sampLinear, vUV, 0);
+    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vUV, 0);
     float fWeight = 4.f * fLenInv / fLenSq;
 
     vColor *= fWeight;
@@ -93,28 +91,23 @@ void CSMain(
 
     [unroll]
     for(uint i = 0; i < COFF_COUNT; ++i)
-        bufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.y][i] = vSH[i];
+        BufTmpCoeffAcc[uGroupThreadID.x][i] = vSH[i];
     GroupMemoryBarrierWithGroupSync();
 
-    [unroll(GRUP_MAP_SIZE)]
-    for(uint y = GRUP_MAP_SIZE >> 1; y > 0; y >>= 1){
-        if(uGroupThreadID.y < y){
-            [unroll(GRUP_MAP_SIZE)]
-            for(uint x = GRUP_MAP_SIZE >> 1; x > 0; x >>= 1){
-                if(uGroupThreadID.x < x){
-                    [unroll]
-                    for(uint i = 0; i < COFF_COUNT; ++i)
-                        bufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.y][i] += bufTmpCoeffAcc[uGroupThreadID.x + x][uGroupThreadID.y + y][i];
-                }
-                GroupMemoryBarrierWithGroupSync();
-            }
+    [unroll(MAP_SIZE)]
+    for(uint j = MAP_SIZE >> 1; j > 0; j >>= 1){
+        if(uGroupThreadID.x < j){
+            [unroll]
+            for(uint i = 0; i < COFF_COUNT; ++i)
+                BufTmpCoeffAcc[uGroupThreadID.x][i] += BufTmpCoeffAcc[uGroupThreadID.x + j][i];
         }
         GroupMemoryBarrierWithGroupSync();
     }
 
-    if(uGroupThreadID.x == 0 && uGroupThreadID.y == 0){
+    if(uGroupThreadID.x == 0){
         [unroll]
         for(uint i = 0; i < COFF_COUNT; ++i)
-            bufCoeff[(uGroupID.z * GRUP_MAX * GRUP_MAX) + (uGroupID.y * GRUP_MAX + uGroupID.x)] = bufTmpCoeffAcc[0][0][i];
+            BufCoeff[uGroupID.z * MAP_SIZE * MAP_SIZE + uGroupID.y * MAP_SIZE + i] = BufTmpCoeffAcc[0][i];
     }
 }
+

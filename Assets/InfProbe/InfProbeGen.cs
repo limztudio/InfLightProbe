@@ -21,14 +21,21 @@ public struct TetDepthMap
 {
     public TetDepth _0, _1, _2, _3;
 };
+[System.Serializable]
+public struct SHColor
+{
+    public float[] SH;
+};
 
 public class InfProbeGen : MonoBehaviour
 {
-    public ComputeShader shdSHIntegrator = default;
+    public ComputeShader shdSHIntegrator;
+    public ComputeShader shdSHReductor;
     public Vector3 vAABBExtents = new Vector3(50, 50, 50);
     public Vector3 vProbeSpacing = new Vector3(5, 5, 5);
 
     public Vector3[] vProbes;
+    public SHColor[] vSHColors;
     public TetIndex[] vTetIndices;
     public TetDepthMap[] vTetDepthMap;
 

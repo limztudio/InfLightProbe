@@ -522,6 +522,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shdSHIntegrator: {fileID: 7200000, guid: 05a2986cf13ba4540a3f693d3076f8b7, type: 3}
+  shdSHReductor: {fileID: 7200000, guid: 4b805ed5215d36b4a8063c04d764ff3c, type: 3}
   vAABBExtents: {x: 4, y: 4, z: 4}
   vProbeSpacing: {x: 2, y: 2, z: 2}
   vProbes:

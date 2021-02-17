@@ -15,7 +15,7 @@ public class InfProbeGenInspector : Editor
     private InfProbeGen probeGen;
     private List<MeshFilter> meshList = new List<MeshFilter>();
 
-    private ComputeBuffer bufTmpBuffer;
+    private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[2];
 
 
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -37,14 +37,6 @@ public class InfProbeGenInspector : Editor
 
             if (!EditorUtility.IsPersistent(gObj.transform.root.gameObject) && !(gObj.hideFlags == HideFlags.NotEditable || gObj.hideFlags == HideFlags.HideAndDontSave))
             {
-                //foreach(var mesh in gObj.GetComponents<MeshFilter>())
-                //{
-                //    if ((mesh.GetComponents<MeshRenderer>().Length + mesh.GetComponentsInChildren<MeshRenderer>().Length) <= 0)
-                //        continue;
-
-                //    meshList.Add(mesh);
-                //}
-
                 foreach (var mesh in gObj.GetComponentsInChildren<MeshFilter>(false))
                 {
                     if ((mesh.GetComponents<MeshRenderer>().Length + mesh.GetComponentsInChildren<MeshRenderer>().Length) <= 0)
@@ -67,6 +59,7 @@ public class InfProbeGenInspector : Editor
                 for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
                     ++iLen;
         probeGen.vProbes = new Vector3[iLen];
+        probeGen.vSHColors = new SHColor[iLen];
         float[] fPassProbes = new float[iLen * 3];
 
         iLen = 0;
@@ -105,21 +98,25 @@ public class InfProbeGenInspector : Editor
         }
     }
 
-    private void _rebuildSH(ref Camera camera, ref Cubemap texture, Vector3 vPos)
+    private void _rebuildSH(ref Camera camera, ref Cubemap texture, float fTotalWeight, Vector3 vPos, ref SHColor vSH)
     {
         camera.transform.position = vPos;
         camera.transform.rotation = Quaternion.identity;
         camera.RenderToCubemap(texture);
 
         var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
+        probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", texture);
+        probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+        probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
 
-        probeGen.shdSHIntegrator.SetTexture(iKernel, "texEnv", texture);
-        probeGen.shdSHIntegrator.SetBuffer(iKernel, "bufCoeff", bufTmpBuffer);
+        iKernel = probeGen.shdSHReductor.FindKernel("CSMain");
+        probeGen.shdSHReductor.SetFloat("FltTotalWeight", fTotalWeight);
+        probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+        probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
+        probeGen.shdSHReductor.Dispatch(iKernel, 1, 1, 1);
 
-        probeGen.shdSHIntegrator.Dispatch(iKernel, PROBE_RENDER_SIZE >> 1, PROBE_RENDER_SIZE >> 1, 6);
-
-        //bufTmpBuffer.GetData();
-
+        vSH.SH = new float[9];
+        bufTmpBuffers[0].GetData(vSH.SH);
     }
     private void _rebuildSHs()
     {
@@ -132,11 +129,28 @@ public class InfProbeGenInspector : Editor
         camera.backgroundColor = Color.black;
         camera.aspect = 1.0f;
 
+        float weightSum = 0.0f;
+        for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
+        {
+            for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
+            {
+                float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+                float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+
+                float temp = 1.0f + u * u + v * v;
+                float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
+
+                weightSum += weight;
+            }
+        }
+        weightSum *= 6.0f;
+        weightSum = (4.0f * 3.14159f) / weightSum;
+
         for (int i = 0; i < probeGen.vProbes.Length; ++i)
         {
             var vPos = probeGen.vProbes[i];
 
-            _rebuildSH(ref camera, ref texture, vPos);
+            _rebuildSH(ref camera, ref texture, weightSum, vPos, ref probeGen.vSHColors[i]);
         }
 
         DestroyImmediate(gObj);
@@ -209,8 +223,6 @@ public class InfProbeGenInspector : Editor
         }
         else
             return false;
-
-        return false;
     }
     private void _fillTriInfo(ref TetDepth tetDepth, Vector3 vOrigin, Vector3 v0, Vector3 v1, Vector3 v2)
     {
@@ -308,7 +320,13 @@ public class InfProbeGenInspector : Editor
     {
         probeGen = (InfProbeGen)target;
 
-        bufTmpBuffer = new ComputeBuffer(9, sizeof(float));
+        bufTmpBuffers[0] = new ComputeBuffer(9, sizeof(float) * 3);
+        bufTmpBuffers[1] = new ComputeBuffer(PROBE_RENDER_SIZE * 9, sizeof(float) * 3);
+    }
+    private void OnDisable()
+    {
+        bufTmpBuffers[0].Release();
+        bufTmpBuffers[1].Release();
     }
 
     public override void OnInspectorGUI()

@@ -1,0 +1,39 @@
+#pragma kernel CSMain
+
+
+#define MAP_SIZE 64
+#define COFF_COUNT 9
+
+
+float FltTotalWeight;
+
+Buffer<float3> BufCoeff;
+
+RWBuffer<float3> BufCoeffAcc;
+
+
+groupshared float3 BufTmpCoeffAcc[MAP_SIZE][COFF_COUNT];
+
+
+[numthreads(MAP_SIZE, 1, COFF_COUNT)]
+void CSMain(
+    uint3 uGroupID : SV_GroupID,
+    uint3 uDispatchThreadID : SV_DispatchThreadID,
+    uint3 uGroupThreadID : SV_GroupThreadID,
+    uint uGuroupIndex : SV_GroupIndex
+)
+{
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z] = BufCoeff[uGroupThreadID.x * COFF_COUNT + uGroupThreadID.z];
+    GroupMemoryBarrierWithGroupSync();
+
+    [unroll(MAP_SIZE)]
+    for(uint i = MAP_SIZE >> 1; i > 0; i >>= 1){
+        if(uGroupThreadID.x < i)
+            BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z] += BufTmpCoeffAcc[uGroupThreadID.x + i][uGroupThreadID.z];
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    if(uGroupThreadID.x == 0)
+        BufCoeffAcc[uGroupThreadID.z] = BufTmpCoeffAcc[0][uGroupThreadID.z] * FltTotalWeight;
+}
+
