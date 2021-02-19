@@ -5,6 +5,17 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
 
+
+struct TGVector4x3
+{
+    public Vector3[] vectors;
+};
+struct TGUint4
+{
+    public uint[] ind;
+};
+
+
 [CustomEditor(typeof(InfProbeGen))]
 public class InfProbeGenInspector : Editor
 {
@@ -33,30 +44,59 @@ public class InfProbeGenInspector : Editor
     private static extern void TGGetTetBaryMatrices(float[] vOut);
 
 
-    private float[] _vector3sToFloats(Vector3[] vAry)
+    private static float[] _vector3sToFloats(Vector3[] vAry)
     {
         float[] fOut = new float[vAry.Length * 3];
         for(int i = 0; i < vAry.Length; ++i)
         {
-            fOut[i * 3 + 0] = vAry[i].x;
-            fOut[i * 3 + 1] = vAry[i].y;
-            fOut[i * 3 + 2] = vAry[i].z;
+            fOut[(i * 3) + 0] = vAry[i].x;
+            fOut[(i * 3) + 1] = vAry[i].y;
+            fOut[(i * 3) + 2] = vAry[i].z;
         }
         return fOut;
     }
-    private Vector3[] _floatsToVector3(float[] fAry)
+    private static Vector3[] _floatsToVector3s(float[] fAry)
     {
         Vector3[] vOut = new Vector3[fAry.Length / 3];
         for (int i = 0; i < vOut.Length; ++i)
         {
             vOut[i] = new Vector3(
-                fAry[i * 3 + 0],
-                fAry[i * 3 + 1],
-                fAry[i * 3 + 2]
+                fAry[(i * 3) + 0],
+                fAry[(i * 3) + 1],
+                fAry[(i * 3) + 2]
                 );
         }
         return vOut;
     }
+
+    private static TGVector4x3[] _vector3sToVector43s(Vector3[] vAry)
+    {
+        TGVector4x3[] vOut = new TGVector4x3[vAry.Length >> 2];
+        for (int i = 0; i < vOut.Length; ++i)
+        {
+            vOut[i].vectors = new Vector3[4];
+            vOut[i].vectors[0] = vAry[(i << 2) + 0];
+            vOut[i].vectors[1] = vAry[(i << 2) + 1];
+            vOut[i].vectors[2] = vAry[(i << 2) + 2];
+            vOut[i].vectors[3] = vAry[(i << 2) + 3];
+        }
+        return vOut;
+    }
+
+    private static TGUint4[] _uintsToUint4s(uint[] uAry)
+    {
+        TGUint4[] uOut = new TGUint4[uAry.Length >> 2];
+        for (int i = 0; i < uOut.Length; ++i)
+        {
+            uOut[i].ind = new uint[4];
+            uOut[i].ind[0] = uAry[(i << 2) + 0];
+            uOut[i].ind[1] = uAry[(i << 2) + 1];
+            uOut[i].ind[2] = uAry[(i << 2) + 2];
+            uOut[i].ind[3] = uAry[(i << 2) + 3];
+        }
+        return uOut;
+    }
+
 
     private void _findAllMeshes()
     {
@@ -80,7 +120,7 @@ public class InfProbeGenInspector : Editor
         }
     }
 
-    private bool _compareSH(ref SHColor vLHS, ref SHColor vRHS, float fDIFF)
+    private static bool _compareSH(ref SHColor vLHS, ref SHColor vRHS, float fDIFF)
     {
         for(int i = 0; i < 9; ++i)
         {
@@ -90,7 +130,7 @@ public class InfProbeGenInspector : Editor
         }
         return true;
     }
-    private SHColor _averageSH(ref SHColor[] vSHs)
+    private static SHColor _averageSH(ref SHColor[] vSHs)
     {
         SHColor vSH = new SHColor();
         vSH.SH = new float[9];
@@ -105,74 +145,85 @@ public class InfProbeGenInspector : Editor
     }
     private void _rebuildSH(ref Camera camera, ref Cubemap texture, float fTotalWeight, Vector3 vPos, ref SHColor vSH)
     {
-        camera.transform.position = vPos;
-        camera.transform.rotation = Quaternion.identity;
-        camera.RenderToCubemap(texture);
+        if (cachedSHList.ContainsKey(vPos))
+        {
+            vSH = cachedSHList[vPos];
+        }
+        else
+        {
+            camera.transform.position = vPos;
+            camera.transform.rotation = Quaternion.identity;
+            camera.RenderToCubemap(texture);
 
-        var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
-        probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", texture);
-        probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
-        probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
+            var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
+            probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", texture);
+            probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+            probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
 
-        iKernel = probeGen.shdSHReductor.FindKernel("CSMain");
-        probeGen.shdSHReductor.SetFloat("FltTotalWeight", fTotalWeight);
-        probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
-        probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
-        probeGen.shdSHReductor.Dispatch(iKernel, 1, 1, 1);
+            iKernel = probeGen.shdSHReductor.FindKernel("CSMain");
+            probeGen.shdSHReductor.SetFloat("FltTotalWeight", fTotalWeight);
+            probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+            probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
+            probeGen.shdSHReductor.Dispatch(iKernel, 1, 1, 1);
 
-        vSH.SH = new float[9];
-        bufTmpBuffers[0].GetData(vSH.SH);
+            vSH.SH = new float[9];
+            bufTmpBuffers[0].GetData(vSH.SH);
+
+            cachedSHList.Add(vPos, vSH);
+        }
     }
 
     // deprecated
-    private void _rebuildSHs()
-    {
-        var gObj = new GameObject("ProbeCamera");
-        var camera = gObj.AddComponent<Camera>();
-        var texture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
+    //private void _rebuildSHs()
+    //{
+    //    var gObj = new GameObject("ProbeCamera");
+    //    var camera = gObj.AddComponent<Camera>();
+    //    var texture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
 
-        camera.allowHDR = false;
-        camera.allowMSAA = false;
-        camera.backgroundColor = Color.black;
-        camera.aspect = 1.0f;
+    //    camera.allowHDR = false;
+    //    camera.allowMSAA = false;
+    //    camera.backgroundColor = Color.black;
+    //    camera.aspect = 1.0f;
 
-        float weightSum = 0.0f;
-        for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
-        {
-            for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
-            {
-                float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
-                float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+    //    float weightSum = 0.0f;
+    //    for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
+    //    {
+    //        for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
+    //        {
+    //            float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+    //            float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
 
-                float temp = 1.0f + u * u + v * v;
-                float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
+    //            float temp = 1.0f + u * u + v * v;
+    //            float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
 
-                weightSum += weight;
-            }
-        }
-        weightSum *= 6.0f;
-        weightSum = (4.0f * 3.14159f) / weightSum;
+    //            weightSum += weight;
+    //        }
+    //    }
+    //    weightSum *= 6.0f;
+    //    weightSum = (4.0f * 3.14159f) / weightSum;
 
-        for (int i = 0; i < probeGen.vProbes.Length; ++i)
-        {
-            var vPos = probeGen.vProbes[i];
+    //    for (int i = 0; i < probeGen.vProbes.Length; ++i)
+    //    {
+    //        var vPos = probeGen.vProbes[i];
 
-            _rebuildSH(ref camera, ref texture, weightSum, vPos, ref probeGen.vSHColors[i]);
-        }
+    //        _rebuildSH(ref camera, ref texture, weightSum, vPos, ref probeGen.vSHColors[i]);
+    //    }
 
-        DestroyImmediate(gObj);
-    }
+    //    DestroyImmediate(gObj);
+    //}
 
     private void _generateTets()
     {
-        var gObj = new GameObject("ProbeCamera");
-        var camera = gObj.AddComponent<Camera>();
-        var texture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
+        cachedSHList.Clear();
 
-        camera.allowHDR = false;
-        camera.allowMSAA = false;
-        camera.backgroundColor = Color.black;
-        camera.aspect = 1.0f;
+        var tmpObject = new GameObject("ProbeCamera");
+        var tmpCamera = tmpObject.AddComponent<Camera>();
+        var tmpTexture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
+
+        tmpCamera.allowHDR = false;
+        tmpCamera.allowMSAA = false;
+        tmpCamera.backgroundColor = Color.black;
+        tmpCamera.aspect = 1.0f;
 
         float fTotalWeight = 0.0f;
         for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
@@ -209,12 +260,32 @@ public class InfProbeGenInspector : Editor
             TGBuildTets(_vector3sToFloats(vRootVertices), (uint)(vRootVertices.Length * 3));
         }
 
-        var uTetCount = TGGetTetCount();
+        var iTetCount = (int)TGGetTetCount();
         {
-            float[] fRootVertices = new float[uTetCount * 4 * 3];
-            TGGetTetVertices(fRootVertices);
-            Vector3[] vRootVertices = _floatsToVector3(fRootVertices);
+            float[] fRawRootVertices = new float[iTetCount * 4 * 3];
+            TGGetTetVertices(fRawRootVertices);
+            TGVector4x3[] vRootTetVertices = _vector3sToVector43s(_floatsToVector3s(fRawRootVertices));
 
+            uint[] uRawRootIntraIndices = new uint[iTetCount >> 2];
+            TGGetTetIntraIndices(uRawRootIntraIndices);
+            TGUint4[] uRootIntraIndices = _uintsToUint4s(uRawRootIntraIndices);
+
+            for (int i = 0; i < iTetCount; ++i)
+            {
+                SHColor[] sHColors = new SHColor[4];
+                for (int j = 0; j < 4; ++j)
+                {
+                    sHColors[j] = new SHColor();
+                    _rebuildSH(
+                        ref tmpCamera,
+                        ref tmpTexture,
+                        fTotalWeight,
+                        vRootTetVertices[i].vectors[uRootIntraIndices[i].ind[j]],
+                        ref sHColors[j]
+                        );
+                }
+                var shAverage = _averageSH(ref sHColors);
+            }
         }
 
 
@@ -266,7 +337,7 @@ public class InfProbeGenInspector : Editor
 
 
 
-        DestroyImmediate(gObj);
+        DestroyImmediate(tmpObject);
     }
 
     private static ref byte _depthToIndex(ref TetDepth tetDepth, int iID)
