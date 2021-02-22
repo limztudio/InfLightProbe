@@ -10,6 +10,10 @@ struct TGVector4x3
 {
     public Vector3[] vectors;
 };
+struct TGVector6x3
+{
+    public Vector3[] vectors;
+};
 struct TGUint4
 {
     public uint[] ind;
@@ -25,13 +29,17 @@ public class InfProbeGenInspector : Editor
 
     private InfProbeGen probeGen;
     private List<MeshFilter> meshList = new List<MeshFilter>();
+
     private Dictionary<Vector3, SHColor> cachedSHList = new Dictionary<Vector3, SHColor>();
+    private HashSet<Vector3> cachedSubPositions = new HashSet<Vector3>();
+
+    private TGVector4x3[] renderTets;
 
     private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[2];
 
 
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern bool TGBuildTets(float[] vertices, uint numVert);
+    private static extern bool TGBuildTets(float[] vInputTets, uint numVert);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern uint TGGetTetCount();
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -42,6 +50,14 @@ public class InfProbeGenInspector : Editor
     private static extern void TGGetTetAjacentIndices(uint[] vOut);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGGetTetBaryMatrices(float[] vOut);
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void TGSubdivideTet(float[] vInputTet, float[] vOutTets, float[] vOutOct);
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void TGSubdivideOct(float[] vInputOct, float[] vOutTets, float[] vOutOcts);
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern float TGGetAverageTetSpace(float[] vInputTet);
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern float TGGetAverageOctSpace(float[] vInputOct);
 
 
     private static float[] _vector3sToFloats(Vector3[] vAry)
@@ -69,6 +85,18 @@ public class InfProbeGenInspector : Editor
         return vOut;
     }
 
+    private static Vector3[] _vector43sToVector3s(TGVector4x3[] vAry)
+    {
+        Vector3[] vOut = new Vector3[vAry.Length << 2];
+        for (int i = 0; i < vAry.Length; ++i)
+        {
+            vOut[(i << 2) + 0] = vAry[i].vectors[0];
+            vOut[(i << 2) + 1] = vAry[i].vectors[1];
+            vOut[(i << 2) + 2] = vAry[i].vectors[2];
+            vOut[(i << 2) + 3] = vAry[i].vectors[3];
+        }
+        return vOut;
+    }
     private static TGVector4x3[] _vector3sToVector43s(Vector3[] vAry)
     {
         TGVector4x3[] vOut = new TGVector4x3[vAry.Length >> 2];
@@ -79,6 +107,35 @@ public class InfProbeGenInspector : Editor
             vOut[i].vectors[1] = vAry[(i << 2) + 1];
             vOut[i].vectors[2] = vAry[(i << 2) + 2];
             vOut[i].vectors[3] = vAry[(i << 2) + 3];
+        }
+        return vOut;
+    }
+    private static Vector3[] _vector63sToVector3s(TGVector6x3[] vAry)
+    {
+        Vector3[] vOut = new Vector3[vAry.Length * 6];
+        for (int i = 0; i < vAry.Length; ++i)
+        {
+            vOut[(i * 6) + 0] = vAry[i].vectors[0];
+            vOut[(i * 6) + 1] = vAry[i].vectors[1];
+            vOut[(i * 6) + 2] = vAry[i].vectors[2];
+            vOut[(i * 6) + 3] = vAry[i].vectors[3];
+            vOut[(i * 6) + 4] = vAry[i].vectors[4];
+            vOut[(i * 6) + 5] = vAry[i].vectors[5];
+        }
+        return vOut;
+    }
+    private static TGVector6x3[] _vector3sToVector63s(Vector3[] vAry)
+    {
+        TGVector6x3[] vOut = new TGVector6x3[vAry.Length / 6];
+        for (int i = 0; i < vOut.Length; ++i)
+        {
+            vOut[i].vectors = new Vector3[6];
+            vOut[i].vectors[0] = vAry[(i / 6) + 0];
+            vOut[i].vectors[1] = vAry[(i / 6) + 1];
+            vOut[i].vectors[2] = vAry[(i / 6) + 2];
+            vOut[i].vectors[3] = vAry[(i / 6) + 3];
+            vOut[i].vectors[4] = vAry[(i / 6) + 4];
+            vOut[i].vectors[5] = vAry[(i / 6) + 5];
         }
         return vOut;
     }
@@ -95,6 +152,15 @@ public class InfProbeGenInspector : Editor
             uOut[i].ind[3] = uAry[(i << 2) + 3];
         }
         return uOut;
+    }
+
+    private static Vector3 _averageVector3s(Vector3[] vAry)
+    {
+        Vector3 vOut = Vector3.zero;
+        foreach (var v in vAry)
+            vOut += v;
+        vOut /= (float)vAry.Length;
+        return vOut;
     }
 
 
@@ -143,7 +209,13 @@ public class InfProbeGenInspector : Editor
             vSH.SH[i] /= (float)vSHs.Length;
         return vSH;
     }
-    private void _rebuildSH(ref Camera camera, ref Cubemap texture, float fTotalWeight, Vector3 vPos, ref SHColor vSH)
+    private void _rebuildSH(
+        ref Camera tmpCamera,
+        ref Cubemap tmpTexture,
+        float fTotalWeight,
+        Vector3 vPos,
+        ref SHColor vSH
+        )
     {
         if (cachedSHList.ContainsKey(vPos))
         {
@@ -151,12 +223,12 @@ public class InfProbeGenInspector : Editor
         }
         else
         {
-            camera.transform.position = vPos;
-            camera.transform.rotation = Quaternion.identity;
-            camera.RenderToCubemap(texture);
+            tmpCamera.transform.position = vPos;
+            tmpCamera.transform.rotation = Quaternion.identity;
+            tmpCamera.RenderToCubemap(tmpTexture);
 
             var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
-            probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", texture);
+            probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", tmpTexture);
             probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
             probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
 
@@ -173,48 +245,226 @@ public class InfProbeGenInspector : Editor
         }
     }
 
-    // deprecated
-    //private void _rebuildSHs()
-    //{
-    //    var gObj = new GameObject("ProbeCamera");
-    //    var camera = gObj.AddComponent<Camera>();
-    //    var texture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
+    private void _subdivideTet(
+        ref Camera tmpCamera,
+        ref Cubemap tmpTexture,
+        float fTotalWeight,
+        TGVector4x3 vParentTet,
+        SHColor shParentAverage
+        )
+    {
+        TGVector4x3[] vSubTets;
+        TGVector6x3[] vSubOcts;
+        {
+            TGVector4x3[] vInputTets = new TGVector4x3[1];
+            vInputTets[0] = vParentTet;
 
-    //    camera.allowHDR = false;
-    //    camera.allowMSAA = false;
-    //    camera.backgroundColor = Color.black;
-    //    camera.aspect = 1.0f;
+            float[] fSubTetVertices = new float[4 * 4 * 3];
+            float[] fSubOctVertices = new float[1 * 6 * 3];
 
-    //    float weightSum = 0.0f;
-    //    for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
-    //    {
-    //        for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
-    //        {
-    //            float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
-    //            float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+            TGSubdivideTet(
+                _vector3sToFloats(_vector43sToVector3s(vInputTets)),
+                fSubTetVertices,
+                fSubOctVertices
+                );
 
-    //            float temp = 1.0f + u * u + v * v;
-    //            float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
+            vSubTets = _vector3sToVector43s(_floatsToVector3s(fSubTetVertices));
+            vSubOcts = _vector3sToVector63s(_floatsToVector3s(fSubOctVertices));
+        }
 
-    //            weightSum += weight;
-    //        }
-    //    }
-    //    weightSum *= 6.0f;
-    //    weightSum = (4.0f * 3.14159f) / weightSum;
+        foreach (var vSubTet in vSubTets)
+        {
+            TGVector4x3[] vInputTets = new TGVector4x3[1];
+            vInputTets[0] = vSubTet;
+            var fComp = TGGetAverageTetSpace(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+            if (fComp <= probeGen.fMinDist)
+            {
+                foreach (var v in vParentTet.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
 
-    //    for (int i = 0; i < probeGen.vProbes.Length; ++i)
-    //    {
-    //        var vPos = probeGen.vProbes[i];
+            SHColor[] sHColors = new SHColor[4];
+            for (int j = 0; j < 4; ++j)
+            {
+                sHColors[j] = new SHColor();
+                _rebuildSH(
+                    ref tmpCamera,
+                    ref tmpTexture,
+                    fTotalWeight,
+                    vSubTet.vectors[j],
+                    ref sHColors[j]
+                    );
+            }
+            var shAverage = _averageSH(ref sHColors);
+            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            {
+                foreach (var v in vParentTet.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
 
-    //        _rebuildSH(ref camera, ref texture, weightSum, vPos, ref probeGen.vSHColors[i]);
-    //    }
+            _subdivideTet(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vSubTet,
+                shAverage
+                );
+        }
+        foreach (var vSubOct in vSubOcts)
+        {
+            TGVector6x3[] vInputOcts = new TGVector6x3[1];
+            vInputOcts[0] = vSubOct;
+            var fComp = TGGetAverageOctSpace(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
+            if (fComp <= probeGen.fMinDist)
+            {
+                foreach (var v in vParentTet.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
 
-    //    DestroyImmediate(gObj);
-    //}
+            SHColor[] sHColors = new SHColor[6];
+            for (int j = 0; j < 6; ++j)
+            {
+                sHColors[j] = new SHColor();
+                _rebuildSH(
+                    ref tmpCamera,
+                    ref tmpTexture,
+                    fTotalWeight,
+                    vSubOct.vectors[j],
+                    ref sHColors[j]
+                    );
+            }
+            var shAverage = _averageSH(ref sHColors);
+            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            {
+                foreach (var v in vParentTet.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
 
+            _subdivideOct(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vSubOct,
+                shAverage
+                );
+        }
+    }
+    private void _subdivideOct(
+        ref Camera tmpCamera,
+        ref Cubemap tmpTexture,
+        float fTotalWeight,
+        TGVector6x3 vParentOct,
+        SHColor shParentAverage
+        )
+    {
+        TGVector4x3[] vSubTets;
+        TGVector6x3[] vSubOcts;
+        {
+            TGVector6x3[] vInputOcts = new TGVector6x3[1];
+            vInputOcts[0] = vParentOct;
+
+            float[] fSubTetVertices = new float[8 * 4 * 3];
+            float[] fSubOctVertices = new float[6 * 6 * 3];
+
+            TGSubdivideOct(
+                _vector3sToFloats(_vector63sToVector3s(vInputOcts)),
+                fSubTetVertices,
+                fSubOctVertices
+                );
+
+            vSubTets = _vector3sToVector43s(_floatsToVector3s(fSubTetVertices));
+            vSubOcts = _vector3sToVector63s(_floatsToVector3s(fSubOctVertices));
+        }
+
+        foreach (var vSubTet in vSubTets)
+        {
+            TGVector4x3[] vInputTets = new TGVector4x3[1];
+            vInputTets[0] = vSubTet;
+            var fComp = TGGetAverageTetSpace(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+            if (fComp <= probeGen.fMinDist)
+            {
+                foreach (var v in vParentOct.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
+
+            SHColor[] sHColors = new SHColor[4];
+            for (int j = 0; j < 4; ++j)
+            {
+                sHColors[j] = new SHColor();
+                _rebuildSH(
+                    ref tmpCamera,
+                    ref tmpTexture,
+                    fTotalWeight,
+                    vSubTet.vectors[j],
+                    ref sHColors[j]
+                    );
+            }
+            var shAverage = _averageSH(ref sHColors);
+            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            {
+                foreach (var v in vParentOct.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
+
+            _subdivideTet(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vSubTet,
+                shAverage
+                );
+        }
+        foreach (var vSubOct in vSubOcts)
+        {
+            TGVector6x3[] vInputOcts = new TGVector6x3[1];
+            vInputOcts[0] = vSubOct;
+            var fComp = TGGetAverageOctSpace(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
+            if (fComp <= probeGen.fMinDist)
+            {
+                foreach (var v in vParentOct.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
+
+            SHColor[] sHColors = new SHColor[6];
+            for (int j = 0; j < 6; ++j)
+            {
+                sHColors[j] = new SHColor();
+                _rebuildSH(
+                    ref tmpCamera,
+                    ref tmpTexture,
+                    fTotalWeight,
+                    vSubOct.vectors[j],
+                    ref sHColors[j]
+                    );
+            }
+            var shAverage = _averageSH(ref sHColors);
+            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            {
+                foreach (var v in vParentOct.vectors)
+                    cachedSubPositions.Add(v);
+                continue;
+            }
+
+            _subdivideOct(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vSubOct,
+                shAverage
+                );
+        }
+    }
     private void _generateTets()
     {
         cachedSHList.Clear();
+        cachedSubPositions.Clear();
 
         var tmpObject = new GameObject("ProbeCamera");
         var tmpCamera = tmpObject.AddComponent<Camera>();
@@ -224,6 +474,8 @@ public class InfProbeGenInspector : Editor
         tmpCamera.allowMSAA = false;
         tmpCamera.backgroundColor = Color.black;
         tmpCamera.aspect = 1.0f;
+        //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
+        tmpCamera.clearFlags = CameraClearFlags.Skybox;
 
         float fTotalWeight = 0.0f;
         for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
@@ -258,17 +510,12 @@ public class InfProbeGenInspector : Editor
                 vRootVertices[7] = new Vector3(vAABBMax.x, vAABBMax.y, vAABBMax.z);
             }
             TGBuildTets(_vector3sToFloats(vRootVertices), (uint)(vRootVertices.Length * 3));
-        }
 
-        var iTetCount = (int)TGGetTetCount();
-        {
+            var iTetCount = (int)TGGetTetCount();
+
             float[] fRawRootVertices = new float[iTetCount * 4 * 3];
             TGGetTetVertices(fRawRootVertices);
             TGVector4x3[] vRootTetVertices = _vector3sToVector43s(_floatsToVector3s(fRawRootVertices));
-
-            uint[] uRawRootIntraIndices = new uint[iTetCount >> 2];
-            TGGetTetIntraIndices(uRawRootIntraIndices);
-            TGUint4[] uRootIntraIndices = _uintsToUint4s(uRawRootIntraIndices);
 
             for (int i = 0; i < iTetCount; ++i)
             {
@@ -280,62 +527,36 @@ public class InfProbeGenInspector : Editor
                         ref tmpCamera,
                         ref tmpTexture,
                         fTotalWeight,
-                        vRootTetVertices[i].vectors[uRootIntraIndices[i].ind[j]],
+                        vRootTetVertices[i].vectors[j],
                         ref sHColors[j]
                         );
                 }
                 var shAverage = _averageSH(ref sHColors);
-            }
-        }
 
-
-
-
-        int iLen = 0;
-        for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
-            for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
-                for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
-                    ++iLen;
-        probeGen.vProbes = new Vector3[iLen];
-        probeGen.vSHColors = new SHColor[iLen];
-        float[] fPassProbes = new float[iLen * 3];
-
-        iLen = 0;
-        for (float fZ = vAABBMin.z; fZ <= vAABBMax.z; fZ += probeGen.vProbeSpacing.z)
-        {
-            for (float fY = vAABBMin.y; fY <= vAABBMax.y; fY += probeGen.vProbeSpacing.y)
-            {
-                for (float fX = vAABBMin.x; fX <= vAABBMax.x; fX += probeGen.vProbeSpacing.x)
-                {
-                    fPassProbes[iLen * 3 + 0] = fX;
-                    fPassProbes[iLen * 3 + 1] = fY;
-                    fPassProbes[iLen * 3 + 2] = fZ;
-                    probeGen.vProbes[iLen++] = new Vector3(fX, fY, fZ);
-                }
+                _subdivideTet(
+                    ref tmpCamera,
+                    ref tmpTexture,
+                    fTotalWeight,
+                    vRootTetVertices[i],
+                    shAverage
+                    );
             }
         }
 
         {
-            TGBuildTets(fPassProbes, (uint)(fPassProbes.Length));
+            Vector3[] vSubVertices = new Vector3[cachedSubPositions.Count];
+            int i = 0;
+            foreach (var v in cachedSubPositions)
+                vSubVertices[i++] = v;
 
-            iLen = (int)TGGetTetIndexCount();
-            uint[] uRawTetIndices = new uint[iLen];
-            TGGetTetIndices(uRawTetIndices);
+            TGBuildTets(_vector3sToFloats(vSubVertices), (uint)(vSubVertices.Length * 3));
 
-            iLen >>= 2;
-            probeGen.vTetIndices = new TetIndex[iLen];
-            probeGen.vTetDepthMap = new TetDepthMap[iLen];
+            var iTetCount = (int)TGGetTetCount();
 
-            for (int i = 0; i < iLen; ++i)
-            {
-                probeGen.vTetIndices[i]._0 = (int)uRawTetIndices[i * 4 + 0];
-                probeGen.vTetIndices[i]._1 = (int)uRawTetIndices[i * 4 + 1];
-                probeGen.vTetIndices[i]._2 = (int)uRawTetIndices[i * 4 + 2];
-                probeGen.vTetIndices[i]._3 = (int)uRawTetIndices[i * 4 + 3];
-            }
+            float[] fRawSubVertices = new float[iTetCount * 4 * 3];
+            TGGetTetVertices(fRawSubVertices);
+            renderTets = _vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
         }
-
-
 
         DestroyImmediate(tmpObject);
     }
@@ -494,8 +715,8 @@ public class InfProbeGenInspector : Editor
     private void _rebuildProbes()
     {
         _generateTets();
-        _findAllMeshes();
-        _fillDepthInfo();
+        //_findAllMeshes();
+        //_fillDepthInfo();
     }
 
 
@@ -522,28 +743,30 @@ public class InfProbeGenInspector : Editor
 
     private void OnSceneGUI()
     {
+        
         Handles.zTest = CompareFunction.Less;
 
-        { // render Tets
-            Handles.color = Color.gray;
-            foreach (var vTetIndex in probeGen.vTetIndices)
-            {
-                Handles.DrawLine(probeGen.vProbes[vTetIndex._0], probeGen.vProbes[vTetIndex._1]);
-                Handles.DrawLine(probeGen.vProbes[vTetIndex._0], probeGen.vProbes[vTetIndex._2]);
-                Handles.DrawLine(probeGen.vProbes[vTetIndex._0], probeGen.vProbes[vTetIndex._3]);
+        //if (renderTets != null)
+        //{ // render Tets
+        //    Handles.color = Color.gray;
+        //    foreach (var vTet in renderTets)
+        //    {
+        //        Handles.DrawLine(vTet.vectors[0], vTet.vectors[1]);
+        //        Handles.DrawLine(vTet.vectors[0], vTet.vectors[2]);
+        //        Handles.DrawLine(vTet.vectors[0], vTet.vectors[3]);
 
-                Handles.DrawLine(probeGen.vProbes[vTetIndex._1], probeGen.vProbes[vTetIndex._2]);
-                Handles.DrawLine(probeGen.vProbes[vTetIndex._1], probeGen.vProbes[vTetIndex._3]);
+        //        Handles.DrawLine(vTet.vectors[1], vTet.vectors[2]);
+        //        Handles.DrawLine(vTet.vectors[1], vTet.vectors[3]);
 
-                Handles.DrawLine(probeGen.vProbes[vTetIndex._2], probeGen.vProbes[vTetIndex._3]);
-            }
-        }
+        //        Handles.DrawLine(vTet.vectors[2], vTet.vectors[3]);
+        //    }
+        //}
 
         { // render Probes
             var vSize = new Vector3(0.2f, 0.2f, 0.2f);
 
             Handles.color = Color.magenta;
-            foreach (var vProbe in probeGen.vProbes)
+            foreach (var vProbe in cachedSubPositions)
                 Handles.DrawWireCube(vProbe, vSize);
         }
 
