@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44563282, g: 0.49532503, b: 0.5741866, a: 1}
+  m_IndirectSpecularColor: {r: 0.44777912, g: 0.49775898, b: 0.575424, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -198,7 +198,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 1e-45}
+  m_BoundingSphereOverride: {x: NaN, y: 0, z: 0, w: 1e-45}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
@@ -210,13 +210,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705507993}
-  m_LocalRotation: {x: 0.5108268, y: 0.3001845, z: 0.04419829, w: 0.804358}
+  m_LocalRotation: {x: 0.39705515, y: 0.015377227, z: -0.13611966, w: 0.90751433}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 52.678, y: 60.572, z: 38.543}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 46.457, y: -6.684, z: -19.932}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -310,7 +310,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
       propertyPath: m_RootOrder
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
@@ -330,22 +330,22 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.27059805
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.27059805
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.6532815
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.6532815
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
@@ -360,7 +360,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 45
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: ff009332f312a664cbb53c52e20779b9,
         type: 3}
@@ -400,10 +400,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shdSHIntegrator: {fileID: 7200000, guid: 05a2986cf13ba4540a3f693d3076f8b7, type: 3}
   shdSHReductor: {fileID: 7200000, guid: 4b805ed5215d36b4a8063c04d764ff3c, type: 3}
-  vAABBExtents: {x: 26.095192, y: 6.0816026, z: 24.293707}
+  vAABBExtents: {x: 20, y: 20, z: 20}
   vProbeSpacing: {x: 2, y: 2, z: 2}
-  fMinDist: 1
-  fSHDiff: 0.00004
+  fMinDist: 4
+  fSHDiff: 0.0001
   vProbes:
   - {x: -4, y: 0, z: -4}
   - {x: -2, y: 0, z: -4}
@@ -27903,7 +27903,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1259639924}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 5.9, z: 0}
+  m_LocalPosition: {x: 0, y: 6, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}

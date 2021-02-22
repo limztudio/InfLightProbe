@@ -746,21 +746,21 @@ public class InfProbeGenInspector : Editor
         
         Handles.zTest = CompareFunction.Less;
 
-        //if (renderTets != null)
-        //{ // render Tets
-        //    Handles.color = Color.gray;
-        //    foreach (var vTet in renderTets)
-        //    {
-        //        Handles.DrawLine(vTet.vectors[0], vTet.vectors[1]);
-        //        Handles.DrawLine(vTet.vectors[0], vTet.vectors[2]);
-        //        Handles.DrawLine(vTet.vectors[0], vTet.vectors[3]);
+        if (renderTets != null)
+        { // render Tets
+            Handles.color = Color.gray;
+            foreach (var vTet in renderTets)
+            {
+                Handles.DrawLine(vTet.vectors[0], vTet.vectors[1]);
+                Handles.DrawLine(vTet.vectors[0], vTet.vectors[2]);
+                Handles.DrawLine(vTet.vectors[0], vTet.vectors[3]);
 
-        //        Handles.DrawLine(vTet.vectors[1], vTet.vectors[2]);
-        //        Handles.DrawLine(vTet.vectors[1], vTet.vectors[3]);
+                Handles.DrawLine(vTet.vectors[1], vTet.vectors[2]);
+                Handles.DrawLine(vTet.vectors[1], vTet.vectors[3]);
 
-        //        Handles.DrawLine(vTet.vectors[2], vTet.vectors[3]);
-        //    }
-        //}
+                Handles.DrawLine(vTet.vectors[2], vTet.vectors[3]);
+            }
+        }
 
         { // render Probes
             var vSize = new Vector3(0.2f, 0.2f, 0.2f);
