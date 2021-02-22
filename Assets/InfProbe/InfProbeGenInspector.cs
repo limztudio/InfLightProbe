@@ -55,9 +55,9 @@ public class InfProbeGenInspector : Editor
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGSubdivideOct(float[] vInputOct, float[] vOutTets, float[] vOutOcts);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern float TGGetAverageTetSpace(float[] vInputTet);
+    private static extern float TGGetAverageTetVolume(float[] vInputTet);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern float TGGetAverageOctSpace(float[] vInputOct);
+    private static extern float TGGetAverageOctVolume(float[] vInputOct);
 
 
     private static float[] _vector3sToFloats(Vector3[] vAry)
@@ -276,7 +276,7 @@ public class InfProbeGenInspector : Editor
         {
             TGVector4x3[] vInputTets = new TGVector4x3[1];
             vInputTets[0] = vSubTet;
-            var fComp = TGGetAverageTetSpace(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+            var fComp = TGGetAverageTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
             if (fComp <= probeGen.fMinDist)
             {
                 foreach (var v in vParentTet.vectors)
@@ -316,7 +316,7 @@ public class InfProbeGenInspector : Editor
         {
             TGVector6x3[] vInputOcts = new TGVector6x3[1];
             vInputOcts[0] = vSubOct;
-            var fComp = TGGetAverageOctSpace(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
+            var fComp = TGGetAverageOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
             if (fComp <= probeGen.fMinDist)
             {
                 foreach (var v in vParentTet.vectors)
@@ -384,7 +384,7 @@ public class InfProbeGenInspector : Editor
         {
             TGVector4x3[] vInputTets = new TGVector4x3[1];
             vInputTets[0] = vSubTet;
-            var fComp = TGGetAverageTetSpace(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+            var fComp = TGGetAverageTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
             if (fComp <= probeGen.fMinDist)
             {
                 foreach (var v in vParentOct.vectors)
@@ -424,7 +424,7 @@ public class InfProbeGenInspector : Editor
         {
             TGVector6x3[] vInputOcts = new TGVector6x3[1];
             vInputOcts[0] = vSubOct;
-            var fComp = TGGetAverageOctSpace(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
+            var fComp = TGGetAverageOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
             if (fComp <= probeGen.fMinDist)
             {
                 foreach (var v in vParentOct.vectors)
