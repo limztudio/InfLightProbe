@@ -2,8 +2,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 [System.Serializable]
-public struct TetIndex
+public struct SHColor
+{
+    public float[] SH;
+};
+[System.Serializable]
+public struct TetFloat43
+{
+    public Vector3 _0, _1, _2, _3;
+};
+[System.Serializable]
+public struct TetInt4
 {
     public int _0, _1, _2, _3;
 };
@@ -21,11 +32,7 @@ public struct TetDepthMap
 {
     public TetDepth _0, _1, _2, _3;
 };
-[System.Serializable]
-public struct SHColor
-{
-    public float[] SH;
-};
+
 
 public class InfProbeGen : MonoBehaviour
 {
@@ -37,10 +44,12 @@ public class InfProbeGen : MonoBehaviour
     public float fMinVolume = 10.0f;
     public float fSHDiff = 0.0001f;
 
-    public Vector3[] vProbes;
-    public SHColor[] vSHColors;
-    public TetIndex[] vTetIndices;
+    public TetFloat43[] vTetVertices;
+    public TetInt4[] vTetAdjIndices;
+    public TetFloat43[] vTetBaryMatrices;
     public TetDepthMap[] vTetDepthMap;
+
+    public SHColor[] vSHColors;
 
     private void Awake()
     {

@@ -190,6 +190,94 @@ public class InfProbeGenInspector : Editor
         return uOut;
     }
 
+    private static TGVector4x3 _prb_convert(TetFloat43 vInp)
+    {
+        TGVector4x3 vOut = new TGVector4x3();
+        vOut.vectors = new Vector3[4];
+        vOut.vectors[0] = vInp._0;
+        vOut.vectors[1] = vInp._1;
+        vOut.vectors[2] = vInp._2;
+        vOut.vectors[3] = vInp._3;
+        return vOut;
+    }
+    private static TetInt4[] _prb_uintsToInt4s(uint[] uAry)
+    {
+        TetInt4[] iOut = new TetInt4[uAry.Length >> 2];
+        for (int i = 0; i < iOut.Length; ++i)
+        {
+            iOut[i]._0 = (int)uAry[(i << 2) + 0];
+            iOut[i]._1 = (int)uAry[(i << 2) + 1];
+            iOut[i]._2 = (int)uAry[(i << 2) + 2];
+            iOut[i]._3 = (int)uAry[(i << 2) + 3];
+        }
+        return iOut;
+    }
+    private static TetFloat43[] _prb_vector3sToVector43s(Vector3[] vAry)
+    {
+        TetFloat43[] vOut = new TetFloat43[vAry.Length >> 2];
+        for (int i = 0; i < vOut.Length; ++i)
+        {
+            vOut[i]._0 = vAry[(i << 2) + 0];
+            vOut[i]._1 = vAry[(i << 2) + 1];
+            vOut[i]._2 = vAry[(i << 2) + 2];
+            vOut[i]._3 = vAry[(i << 2) + 3];
+        }
+        return vOut;
+    }
+
+    private static ref Vector3 _prb_float43ToIndex(ref TetFloat43 tetFloat43, int iID)
+    {
+        switch (iID)
+        {
+            case 0:
+                return ref tetFloat43._0;
+            case 1:
+                return ref tetFloat43._1;
+            case 2:
+                return ref tetFloat43._2;
+            case 3:
+                return ref tetFloat43._3;
+        }
+        return ref tetFloat43._3;
+    }
+    private static ref byte _prb_depthToIndex(ref TetDepth tetDepth, int iID)
+    {
+        switch (iID)
+        {
+            case 0:
+                return ref tetDepth._00;
+            case 1:
+                return ref tetDepth._01;
+            case 2:
+                return ref tetDepth._02;
+            case 3:
+                return ref tetDepth._03;
+            case 4:
+                return ref tetDepth._04;
+            case 5:
+                return ref tetDepth._05;
+            case 6:
+                return ref tetDepth._06;
+            case 7:
+                return ref tetDepth._07;
+            case 8:
+                return ref tetDepth._08;
+            case 9:
+                return ref tetDepth._09;
+            case 10:
+                return ref tetDepth._10;
+            case 11:
+                return ref tetDepth._11;
+            case 12:
+                return ref tetDepth._12;
+            case 13:
+                return ref tetDepth._13;
+            case 14:
+                return ref tetDepth._14;
+        }
+        return ref tetDepth._14;
+    }
+
     private static Vector3 _averageVector3s(Vector3[] vAry)
     {
         Vector3 vOut = Vector3.zero;
@@ -208,6 +296,25 @@ public class InfProbeGenInspector : Editor
                 return false;
         }
         return true;
+    }
+    private static SHColor _averageSH(ref SHColor[] vSHs)
+    {
+        SHColor vSH = new SHColor();
+        vSH.SH = new float[9];
+
+        for (int i = 0; i < 9; ++i)
+            vSH.SH[i] = 0.0f;
+
+        foreach (var j in vSHs)
+        {
+            for (int i = 0; i < 9; ++i)
+                vSH.SH[i] += j.SH[i];
+        }
+
+        for (int i = 0; i < 9; ++i)
+            vSH.SH[i] /= (float)vSHs.Length;
+
+        return vSH;
     }
 
 
@@ -351,16 +458,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-
-            var vAverage = _averageVector3s(vSubTet.vectors);
-            var shAverage = new SHColor();
-            _rebuildSH(
-                ref tmpCamera,
-                ref tmpTexture,
-                fTotalWeight,
-                vAverage,
-                ref shAverage
-                );
+            var shAverage = _averageSH(ref sHColors);
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentTet.vectors)
@@ -400,16 +498,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-
-            var vAverage = _averageVector3s(vSubOct.vectors);
-            var shAverage = new SHColor();
-            _rebuildSH(
-                ref tmpCamera,
-                ref tmpTexture,
-                fTotalWeight,
-                vAverage,
-                ref shAverage
-                );
+            var shAverage = _averageSH(ref sHColors);
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentTet.vectors)
@@ -477,16 +566,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-
-            var vAverage = _averageVector3s(vSubTet.vectors);
-            var shAverage = new SHColor();
-            _rebuildSH(
-                ref tmpCamera,
-                ref tmpTexture,
-                fTotalWeight,
-                vAverage,
-                ref shAverage
-                );
+            var shAverage = _averageSH(ref sHColors);
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentOct.vectors)
@@ -526,16 +606,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-
-            var vAverage = _averageVector3s(vSubOct.vectors);
-            var shAverage = new SHColor();
-            _rebuildSH(
-                ref tmpCamera,
-                ref tmpTexture,
-                fTotalWeight,
-                vAverage,
-                ref shAverage
-                );
+            var shAverage = _averageSH(ref sHColors);
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentOct.vectors)
@@ -565,6 +636,8 @@ public class InfProbeGenInspector : Editor
         tmpCamera.allowMSAA = false;
         tmpCamera.backgroundColor = Color.black;
         tmpCamera.aspect = 1.0f;
+        tmpCamera.nearClipPlane = 0.01f;
+        tmpCamera.farClipPlane = 1000.0f;
         //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
         tmpCamera.clearFlags = CameraClearFlags.Skybox;
 
@@ -622,16 +695,7 @@ public class InfProbeGenInspector : Editor
                         ref sHColors[j]
                         );
                 }
-
-                var vAverage = _averageVector3s(vRootTetVertices[i].vectors);
-                var shAverage = new SHColor();
-                _rebuildSH(
-                    ref tmpCamera,
-                    ref tmpTexture,
-                    fTotalWeight,
-                    vAverage,
-                    ref shAverage
-                    );
+                var shAverage = _averageSH(ref sHColors);
 
                 _subdivideTet(
                     ref tmpCamera,
@@ -655,53 +719,37 @@ public class InfProbeGenInspector : Editor
 
             float[] fRawSubVertices = new float[iTetCount * 4 * 3];
             TGGetTetVertices(fRawSubVertices);
-            var renderTets = _vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
+            probeGen.vTetVertices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
+
+            uint[] uRawSubIntraIndices = new uint[iTetCount * 4];
+            TGGetTetIntraIndices(uRawSubIntraIndices);
+            TGUint4[] vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
+
+            for (i = 0; i < iTetCount; ++i)
+            {
+                TetFloat43 vNewVert = new TetFloat43();
+                vNewVert._0 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
+                vNewVert._1 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
+                vNewVert._2 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
+                probeGen.vTetVertices[i] = vNewVert;
+            }
+
+            uint[] uRawSubAdjIndices = new uint[iTetCount * 4];
+            TGGetTetAjacentIndices(uRawSubAdjIndices);
+            probeGen.vTetAdjIndices = _prb_uintsToInt4s(uRawSubAdjIndices);
+
+            float[] fRawSubBaryMatrices = new float[iTetCount * 4 * 3];
+            TGGetTetBaryMatrices(fRawSubBaryMatrices);
+            probeGen.vTetBaryMatrices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubBaryMatrices));
 
             renderLines.Clear();
-            foreach (var vTet in renderTets)
-                _pushRenderTet(vTet);
+            foreach (var vTet in probeGen.vTetVertices)
+                _pushRenderTet(_prb_convert(vTet));
         }
 
         DestroyImmediate(tmpObject);
     }
 
-    private static ref byte _depthToIndex(ref TetDepth tetDepth, int iID)
-    {
-        switch (iID)
-        {
-            case 0:
-                return ref tetDepth._00;
-            case 1:
-                return ref tetDepth._01;
-            case 2:
-                return ref tetDepth._02;
-            case 3:
-                return ref tetDepth._03;
-            case 4:
-                return ref tetDepth._04;
-            case 5:
-                return ref tetDepth._05;
-            case 6:
-                return ref tetDepth._06;
-            case 7:
-                return ref tetDepth._07;
-            case 8:
-                return ref tetDepth._08;
-            case 9:
-                return ref tetDepth._09;
-            case 10:
-                return ref tetDepth._10;
-            case 11:
-                return ref tetDepth._11;
-            case 12:
-                return ref tetDepth._12;
-            case 13:
-                return ref tetDepth._13;
-            case 14:
-                return ref tetDepth._14;
-        }
-        return ref tetDepth._14;
-    }
     private static bool _rayTriIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, ref float t)
     {
         Vector3 e1 = v1 - v0;
@@ -750,7 +798,7 @@ public class InfProbeGenInspector : Editor
                 var fLongest = vDiff.magnitude;
                 if (fLongest <= 0.0001f)
                 {
-                    _depthToIndex(ref tetDepth, iID++) = 0xff;
+                    _prb_depthToIndex(ref tetDepth, iID++) = 0xff;
                 }
                 else {
                     var vToward = vDiff / fLongest;
@@ -789,29 +837,29 @@ public class InfProbeGenInspector : Editor
                     fShortest /= fLongest;
                     fShortest *= 255.0f;
                     fShortest = Mathf.Clamp(fShortest, 0.0f, 255.0f);
-                    _depthToIndex(ref tetDepth, iID++) = (byte)fShortest;
+                    _prb_depthToIndex(ref tetDepth, iID++) = (byte)fShortest;
                 }
             }
         }
     }
     private void _fillDepthInfo()
     {
-        for (int i = 0, e = probeGen.vTetIndices.Length; i < e; ++i)
+        for (int i = 0, e = probeGen.vTetVertices.Length; i < e; ++i)
         {
-            var iTet = probeGen.vTetIndices[i];
+            var vTet = probeGen.vTetVertices[i];
             ref var iTetDepth = ref probeGen.vTetDepthMap[i];
 
             { // 0 -> 1 2 3
-                _fillTriInfo(ref iTetDepth._0, probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._3]);
+                _fillTriInfo(ref iTetDepth._0, vTet._0, vTet._1, vTet._2, vTet._3);
             }
             { // 1 -> 0 2 3
-                _fillTriInfo(ref iTetDepth._1, probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._3]);
+                _fillTriInfo(ref iTetDepth._1, vTet._1, vTet._0, vTet._2, vTet._3);
             }
             { // 2 -> 0 1 3
-                _fillTriInfo(ref iTetDepth._2, probeGen.vProbes[iTet._2], probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._3]);
+                _fillTriInfo(ref iTetDepth._2, vTet._2, vTet._0, vTet._1, vTet._3);
             }
             { // 3 -> 0 1 2
-                _fillTriInfo(ref iTetDepth._3, probeGen.vProbes[iTet._3], probeGen.vProbes[iTet._0], probeGen.vProbes[iTet._1], probeGen.vProbes[iTet._2]);
+                _fillTriInfo(ref iTetDepth._3, vTet._3, vTet._0, vTet._1, vTet._2);
             }
         }
     }
@@ -819,8 +867,8 @@ public class InfProbeGenInspector : Editor
     private void _rebuildProbes()
     {
         _generateTets();
-        //_findAllMeshes();
-        //_fillDepthInfo();
+        _findAllMeshes();
+        _fillDepthInfo();
     }
 
 

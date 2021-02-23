@@ -22,17 +22,17 @@ groupshared float3 BufTmpCoeffAcc[MAP_SIZE][COFF_COUNT];
 float3 transformCubeDir(in uint n, in float3 dir){
     switch(n){
     case 0:
-        return float3(+dir.x, +dir.y, +dir.z);
-    case 1:
-        return float3(+dir.x, +dir.y, -dir.z);
-    case 2:
         return float3(+dir.z, +dir.y, +dir.x);
+    case 1:
+        return float3(-dir.z, -dir.y, -dir.x);
+    case 2:
+        return float3(+dir.y, +dir.z, +dir.x);
     case 3:
-        return float3(-dir.z, +dir.y, +dir.x);
+        return float3(-dir.y, -dir.z, -dir.x);
     case 4:
-        return float3(+dir.x, +dir.z, +dir.y);
+        return float3(+dir.x, +dir.y, +dir.z);
     case 5:
-        return float3(+dir.x, -dir.z, +dir.y);
+        return float3(-dir.x, -dir.y, -dir.z);
     default:
         return dir;
     }
@@ -41,9 +41,10 @@ float3 transformCubeDir(in uint n, in float3 dir){
 
 void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
     // Cosine kernel
-    const float A0 = 3.141593f;
-    const float A1 = 2.095395f;
-    const float A2 = 0.785398f;
+    const float Pi = 3.141593f;
+    const float A0 = Pi;
+    const float A1 = (2.f * Pi) / 3.f;
+    const float A2 = Pi * 0.25f;
 
     // Band 0
     sh[0] = 0.282095f * A0 * color;
@@ -70,24 +71,24 @@ void CSMain(
     uint uGuroupIndex : SV_GroupIndex
 )
 {
-    float3 vUV = float3(
+    float3 vSHUV = float3(
         ((uDispatchThreadID.x / float(MAP_SIZE)) * 2.f) - 1.f,
         ((uDispatchThreadID.y / float(MAP_SIZE)) * 2.f) - 1.f,
         1.f
         );
-    float fLenSq = dot(vUV, vUV);
+    float fLenSq = dot(vSHUV, vSHUV);
     float fLenInv = rsqrt(fLenSq);
 
-    vUV = vUV * fLenInv;
-    vUV = transformCubeDir(uDispatchThreadID.z, vUV);
+    vSHUV = vSHUV * fLenInv;
+    vSHUV = transformCubeDir(uDispatchThreadID.z, vSHUV);
 
-    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vUV, 0);
+    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vSHUV, 0);
     float fWeight = 4.f * fLenInv / fLenSq;
 
     vColor *= fWeight;
 
     float3 vSH[COFF_COUNT];
-    projectOntoSH(vUV, vColor, vSH);
+    projectOntoSH(vSHUV, vColor, vSH);
 
     [unroll]
     for(uint i = 0; i < COFF_COUNT; ++i)
