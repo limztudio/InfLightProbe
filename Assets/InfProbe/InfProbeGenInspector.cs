@@ -19,6 +19,42 @@ struct TGUint4
     public uint[] ind;
 };
 
+class TGRenderLine
+{
+    public Vector3 v0, v1;
+
+    public TGRenderLine(Vector3 _v0, Vector3 _v1)
+    {
+        v0 = _v0;
+        v1 = _v1;
+    }
+
+    public static bool operator ==(TGRenderLine lhs, TGRenderLine rhs){
+        if (lhs.v0 == rhs.v0 && lhs.v1 == rhs.v1)
+            return true;
+        if (lhs.v0 == rhs.v1 && lhs.v1 == rhs.v0)
+            return true;
+        return false;
+    }
+    public static bool operator !=(TGRenderLine lhs, TGRenderLine rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+    public override bool Equals(object other)
+    {
+        return Equals(other as TGRenderLine);
+    }
+    public bool Equals(TGRenderLine other)
+    {
+        return this == other;
+    }
+    public override int GetHashCode()
+    {
+        return v0.GetHashCode() + v1.GetHashCode();
+    }
+}
+
 
 [CustomEditor(typeof(InfProbeGen))]
 public class InfProbeGenInspector : Editor
@@ -33,7 +69,7 @@ public class InfProbeGenInspector : Editor
     private Dictionary<Vector3, SHColor> cachedSHList = new Dictionary<Vector3, SHColor>();
     private HashSet<Vector3> cachedSubPositions = new HashSet<Vector3>();
 
-    private TGVector4x3[] renderTets;
+    private HashSet<TGRenderLine> renderLines = new HashSet<TGRenderLine>();
 
     private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[2];
 
@@ -163,6 +199,46 @@ public class InfProbeGenInspector : Editor
         return vOut;
     }
 
+    private static bool _compareSH(ref SHColor vLHS, ref SHColor vRHS, float fDIFF)
+    {
+        for (int i = 0; i < 9; ++i)
+        {
+            var v = Mathf.Abs(vLHS.SH[i] - vRHS.SH[i]);
+            if (v > fDIFF)
+                return false;
+        }
+        return true;
+    }
+
+
+    private void _pushRenderTet(TGVector4x3 vTet)
+    {
+        renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[1]));
+        renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[2]));
+        renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[3]));
+
+        renderLines.Add(new TGRenderLine(vTet.vectors[1], vTet.vectors[2]));
+        renderLines.Add(new TGRenderLine(vTet.vectors[1], vTet.vectors[3]));
+
+        renderLines.Add(new TGRenderLine(vTet.vectors[2], vTet.vectors[3]));
+    }
+    private void _pushRenderOct(TGVector6x3 vOct)
+    {
+        renderLines.Add(new TGRenderLine(vOct.vectors[0], vOct.vectors[1]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[0], vOct.vectors[2]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[0], vOct.vectors[3]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[0], vOct.vectors[4]));
+
+        renderLines.Add(new TGRenderLine(vOct.vectors[1], vOct.vectors[2]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[2], vOct.vectors[3]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[3], vOct.vectors[4]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[4], vOct.vectors[1]));
+
+        renderLines.Add(new TGRenderLine(vOct.vectors[5], vOct.vectors[1]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[5], vOct.vectors[2]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[5], vOct.vectors[3]));
+        renderLines.Add(new TGRenderLine(vOct.vectors[5], vOct.vectors[4]));
+    }
 
     private void _findAllMeshes()
     {
@@ -171,6 +247,8 @@ public class InfProbeGenInspector : Editor
         foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
         {
             if (!gObj.activeSelf)
+                continue;
+            if (gObj.hideFlags == HideFlags.HideInHierarchy)
                 continue;
 
             if (!EditorUtility.IsPersistent(gObj.transform.root.gameObject) && !(gObj.hideFlags == HideFlags.NotEditable || gObj.hideFlags == HideFlags.HideAndDontSave))
@@ -186,29 +264,6 @@ public class InfProbeGenInspector : Editor
         }
     }
 
-    private static bool _compareSH(ref SHColor vLHS, ref SHColor vRHS, float fDIFF)
-    {
-        for(int i = 0; i < 9; ++i)
-        {
-            var v = Mathf.Abs(vLHS.SH[i] - vRHS.SH[i]);
-            if (v > fDIFF)
-                return false;
-        }
-        return true;
-    }
-    private static SHColor _averageSH(ref SHColor[] vSHs)
-    {
-        SHColor vSH = new SHColor();
-        vSH.SH = new float[9];
-        for (int i = 0; i < 9; ++i)
-            vSH.SH[i] = 0.0f;
-        foreach (var j in vSHs)
-            for (int i = 0; i < 9; ++i)
-                vSH.SH[i] += j.SH[i];
-        for (int i = 0; i < 9; ++i)
-            vSH.SH[i] /= (float)vSHs.Length;
-        return vSH;
-    }
     private void _rebuildSH(
         ref Camera tmpCamera,
         ref Cubemap tmpTexture,
@@ -277,7 +332,7 @@ public class InfProbeGenInspector : Editor
             TGVector4x3[] vInputTets = new TGVector4x3[1];
             vInputTets[0] = vSubTet;
             var fComp = TGGetTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
-            if (fComp <= probeGen.fMinDist)
+            if (fComp <= probeGen.fMinVolume)
             {
                 foreach (var v in vParentTet.vectors)
                     cachedSubPositions.Add(v);
@@ -296,7 +351,16 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
+
+            var vAverage = _averageVector3s(vSubTet.vectors);
+            var shAverage = new SHColor();
+            _rebuildSH(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vAverage,
+                ref shAverage
+                );
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentTet.vectors)
@@ -317,7 +381,7 @@ public class InfProbeGenInspector : Editor
             TGVector6x3[] vInputOcts = new TGVector6x3[1];
             vInputOcts[0] = vSubOct;
             var fComp = TGGetOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
-            if (fComp <= probeGen.fMinDist)
+            if (fComp <= probeGen.fMinVolume)
             {
                 foreach (var v in vParentTet.vectors)
                     cachedSubPositions.Add(v);
@@ -336,7 +400,16 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
+
+            var vAverage = _averageVector3s(vSubOct.vectors);
+            var shAverage = new SHColor();
+            _rebuildSH(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vAverage,
+                ref shAverage
+                );
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentTet.vectors)
@@ -385,7 +458,7 @@ public class InfProbeGenInspector : Editor
             TGVector4x3[] vInputTets = new TGVector4x3[1];
             vInputTets[0] = vSubTet;
             var fComp = TGGetTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
-            if (fComp <= probeGen.fMinDist)
+            if (fComp <= probeGen.fMinVolume)
             {
                 foreach (var v in vParentOct.vectors)
                     cachedSubPositions.Add(v);
@@ -404,7 +477,16 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
+
+            var vAverage = _averageVector3s(vSubTet.vectors);
+            var shAverage = new SHColor();
+            _rebuildSH(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vAverage,
+                ref shAverage
+                );
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentOct.vectors)
@@ -425,7 +507,7 @@ public class InfProbeGenInspector : Editor
             TGVector6x3[] vInputOcts = new TGVector6x3[1];
             vInputOcts[0] = vSubOct;
             var fComp = TGGetOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
-            if (fComp <= probeGen.fMinDist)
+            if (fComp <= probeGen.fMinVolume)
             {
                 foreach (var v in vParentOct.vectors)
                     cachedSubPositions.Add(v);
@@ -444,7 +526,16 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
+
+            var vAverage = _averageVector3s(vSubOct.vectors);
+            var shAverage = new SHColor();
+            _rebuildSH(
+                ref tmpCamera,
+                ref tmpTexture,
+                fTotalWeight,
+                vAverage,
+                ref shAverage
+                );
             if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
             {
                 foreach (var v in vParentOct.vectors)
@@ -531,7 +622,16 @@ public class InfProbeGenInspector : Editor
                         ref sHColors[j]
                         );
                 }
-                var shAverage = _averageSH(ref sHColors);
+
+                var vAverage = _averageVector3s(vRootTetVertices[i].vectors);
+                var shAverage = new SHColor();
+                _rebuildSH(
+                    ref tmpCamera,
+                    ref tmpTexture,
+                    fTotalWeight,
+                    vAverage,
+                    ref shAverage
+                    );
 
                 _subdivideTet(
                     ref tmpCamera,
@@ -555,7 +655,11 @@ public class InfProbeGenInspector : Editor
 
             float[] fRawSubVertices = new float[iTetCount * 4 * 3];
             TGGetTetVertices(fRawSubVertices);
-            renderTets = _vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
+            var renderTets = _vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
+
+            renderLines.Clear();
+            foreach (var vTet in renderTets)
+                _pushRenderTet(vTet);
         }
 
         DestroyImmediate(tmpObject);
@@ -746,20 +850,11 @@ public class InfProbeGenInspector : Editor
         
         Handles.zTest = CompareFunction.Less;
 
-        if (renderTets != null)
+        if (renderLines.Count > 0)
         { // render Tets
             Handles.color = Color.gray;
-            foreach (var vTet in renderTets)
-            {
-                Handles.DrawLine(vTet.vectors[0], vTet.vectors[1]);
-                Handles.DrawLine(vTet.vectors[0], vTet.vectors[2]);
-                Handles.DrawLine(vTet.vectors[0], vTet.vectors[3]);
-
-                Handles.DrawLine(vTet.vectors[1], vTet.vectors[2]);
-                Handles.DrawLine(vTet.vectors[1], vTet.vectors[3]);
-
-                Handles.DrawLine(vTet.vectors[2], vTet.vectors[3]);
-            }
+            foreach (var vLine in renderLines)
+                Handles.DrawLine(vLine.v0, vLine.v1);
         }
 
         { // render Probes

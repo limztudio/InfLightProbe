@@ -34,7 +34,7 @@ public class InfProbeGen : MonoBehaviour
     public Vector3 vAABBExtents = new Vector3(50, 50, 50);
     public Vector3 vProbeSpacing = new Vector3(5, 5, 5);
 
-    public float fMinDist = 0.1f;
+    public float fMinVolume = 10.0f;
     public float fSHDiff = 0.0001f;
 
     public Vector3[] vProbes;
