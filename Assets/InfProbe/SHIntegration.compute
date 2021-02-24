@@ -24,15 +24,15 @@ float3 transformCubeDir(in uint n, in float3 dir){
     case 0:
         return float3(+dir.z, +dir.y, +dir.x);
     case 1:
-        return float3(-dir.z, -dir.y, -dir.x);
+        return float3(-dir.z, dir.y, dir.x);
     case 2:
         return float3(+dir.y, +dir.z, +dir.x);
     case 3:
-        return float3(-dir.y, -dir.z, -dir.x);
+        return float3(dir.y, -dir.z, dir.x);
     case 4:
         return float3(+dir.x, +dir.y, +dir.z);
     case 5:
-        return float3(-dir.x, -dir.y, -dir.z);
+        return float3(dir.x, dir.y, -dir.z);
     default:
         return dir;
     }

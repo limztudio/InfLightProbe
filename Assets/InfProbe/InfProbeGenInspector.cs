@@ -64,14 +64,16 @@ public class InfProbeGenInspector : Editor
 
 
     private InfProbeGen probeGen;
-    private List<MeshFilter> meshList = new List<MeshFilter>();
+
+    private List<Renderer> probeFinderList = new List<Renderer>();
+    private List<MeshFilter> renderableMeshList = new List<MeshFilter>();
 
     private Dictionary<Vector3, SHColor> cachedSHList = new Dictionary<Vector3, SHColor>();
     private HashSet<Vector3> cachedSubPositions = new HashSet<Vector3>();
 
     private HashSet<TGRenderLine> renderLines = new HashSet<TGRenderLine>();
 
-    private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[3];
+    private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[2];
 
 
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -291,7 +293,15 @@ public class InfProbeGenInspector : Editor
     {
         for (int i = 0; i < 9; ++i)
         {
-            var v = Mathf.Abs(vLHS.SH[i] - vRHS.SH[i]);
+            var v = Mathf.Abs(vLHS.SH[i].x - vRHS.SH[i].x);
+            if (v > fDIFF)
+                return false;
+
+            v = Mathf.Abs(vLHS.SH[i].y - vRHS.SH[i].y);
+            if (v > fDIFF)
+                return false;
+
+            v = Mathf.Abs(vLHS.SH[i].z - vRHS.SH[i].z);
             if (v > fDIFF)
                 return false;
         }
@@ -300,10 +310,10 @@ public class InfProbeGenInspector : Editor
     private static SHColor _averageSH(ref SHColor[] vSHs)
     {
         SHColor vSH = new SHColor();
-        vSH.SH = new float[9];
+        vSH.SH = new Vector3[9];
 
         for (int i = 0; i < 9; ++i)
-            vSH.SH[i] = 0.0f;
+            vSH.SH[i] = Vector3.zero;
 
         foreach (var j in vSHs)
         {
@@ -347,9 +357,32 @@ public class InfProbeGenInspector : Editor
         renderLines.Add(new TGRenderLine(vOct.vectors[5], vOct.vectors[4]));
     }
 
-    private void _findAllMeshes()
+    private void _findAllProbeFindRenderers()
     {
-        meshList.Clear();
+        probeFinderList.Clear();
+
+        foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
+        {
+            if (!gObj.activeSelf)
+                continue;
+            if (gObj.hideFlags == HideFlags.HideInHierarchy)
+                continue;
+
+            if (!EditorUtility.IsPersistent(gObj.transform.root.gameObject) && !(gObj.hideFlags == HideFlags.NotEditable || gObj.hideFlags == HideFlags.HideAndDontSave))
+            {
+                foreach (var renderer in gObj.GetComponentsInChildren<Renderer>(false))
+                {
+                    if ((renderer.GetComponents<InfProbeFinder>().Length + renderer.GetComponentsInChildren<InfProbeFinder>().Length) <= 0)
+                        continue;
+
+                    probeFinderList.Add(renderer);
+                }
+            }
+        }
+    }
+    private void _findAllRenderableMeshes()
+    {
+        renderableMeshList.Clear();
 
         foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
         {
@@ -365,7 +398,10 @@ public class InfProbeGenInspector : Editor
                     if ((mesh.GetComponents<MeshRenderer>().Length + mesh.GetComponentsInChildren<MeshRenderer>().Length) <= 0)
                         continue;
 
-                    meshList.Add(mesh);
+                    if ((mesh.GetComponents<InfProbeFinder>().Length + mesh.GetComponentsInChildren<InfProbeFinder>().Length) > 0)
+                        continue;
+
+                    renderableMeshList.Add(mesh);
                 }
             }
         }
@@ -391,22 +427,23 @@ public class InfProbeGenInspector : Editor
 
             var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
             probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", tmpTexture);
-            probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[2]);
+            probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
             probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
 
             iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
-            probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[2]);
-            probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[1]);
+            probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+            probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
             probeGen.shdSHReductor1.Dispatch(iKernel, 1, 6, 1);
 
             iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
             probeGen.shdSHReductor2.SetFloat("FltTotalWeight", fTotalWeight);
-            probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
-            probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
+            probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[0]);
+            probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[1]);
             probeGen.shdSHReductor2.Dispatch(iKernel, 1, 1, 1);
 
-            vSH.SH = new float[9 * 3];
-            bufTmpBuffers[0].GetData(vSH.SH);
+            var vRawSH = new float[9 * 3];
+            bufTmpBuffers[1].GetData(vRawSH);
+            vSH.SH = _floatsToVector3s(vRawSH);
 
             cachedSHList.Add(vPos, vSH);
         }
@@ -636,32 +673,42 @@ public class InfProbeGenInspector : Editor
         var tmpObject = new GameObject("ProbeCamera");
         var tmpCamera = tmpObject.AddComponent<Camera>();
         var tmpTexture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
-
-        tmpCamera.allowHDR = false;
-        tmpCamera.allowMSAA = false;
-        tmpCamera.backgroundColor = Color.black;
-        tmpCamera.aspect = 1.0f;
-        tmpCamera.nearClipPlane = 0.01f;
-        tmpCamera.farClipPlane = 1000.0f;
-        //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
-        tmpCamera.clearFlags = CameraClearFlags.Skybox;
+        {
+            tmpCamera.allowHDR = false;
+            tmpCamera.allowMSAA = false;
+            tmpCamera.backgroundColor = Color.black;
+            tmpCamera.aspect = 1.0f;
+            tmpCamera.nearClipPlane = 0.01f;
+            tmpCamera.farClipPlane = 1000.0f;
+            //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
+            tmpCamera.clearFlags = CameraClearFlags.Skybox;
+        }
 
         float fTotalWeight = 0.0f;
-        for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
         {
-            for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
+            for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
             {
-                float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
-                float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+                for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
+                {
+                    float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+                    float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
 
-                float temp = 1.0f + u * u + v * v;
-                float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
+                    float temp = 1.0f + u * u + v * v;
+                    float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
 
-                fTotalWeight += weight;
+                    fTotalWeight += weight;
+                }
             }
+            fTotalWeight *= 6.0f;
+            fTotalWeight = (4.0f * 3.14159f) / fTotalWeight;
         }
-        fTotalWeight *= 6.0f;
-        fTotalWeight = (4.0f * 3.14159f) / fTotalWeight;
+
+        bool[] oldRendererVisible = new bool[probeFinderList.Count];
+        for (int i = 0; i < probeFinderList.Count; ++i)
+        {
+            oldRendererVisible[i] = probeFinderList[i].enabled;
+            probeFinderList[i].enabled = false;
+        }
 
         {
             Vector3[] vRootVertices = new Vector3[8];
@@ -688,19 +735,19 @@ public class InfProbeGenInspector : Editor
 
             for (int i = 0; i < iTetCount; ++i)
             {
-                SHColor[] sHColors = new SHColor[4];
+                SHColor[] shColors = new SHColor[4];
                 for (int j = 0; j < 4; ++j)
                 {
-                    sHColors[j] = new SHColor();
+                    shColors[j] = new SHColor();
                     _rebuildSH(
                         ref tmpCamera,
                         ref tmpTexture,
                         fTotalWeight,
                         vRootTetVertices[i].vectors[j],
-                        ref sHColors[j]
+                        ref shColors[j]
                         );
                 }
-                var shAverage = _averageSH(ref sHColors);
+                var shAverage = _averageSH(ref shColors);
 
                 _subdivideTet(
                     ref tmpCamera,
@@ -730,13 +777,62 @@ public class InfProbeGenInspector : Editor
             TGGetTetIntraIndices(uRawSubIntraIndices);
             TGUint4[] vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
 
+            probeGen.vSHColors.Clear();
             for (i = 0; i < iTetCount; ++i)
             {
                 TetFloat43 vNewVert = new TetFloat43();
-                vNewVert._0 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
-                vNewVert._1 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
-                vNewVert._2 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
-                probeGen.vTetVertices[i] = vNewVert;
+                {
+                    vNewVert._0 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
+                    vNewVert._1 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
+                    vNewVert._2 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
+                    vNewVert._3 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[3]);
+                    probeGen.vTetVertices[i] = vNewVert;
+                }
+
+                {
+                    var shColor = new SHColor();
+                    _rebuildSH(
+                        ref tmpCamera,
+                        ref tmpTexture,
+                        fTotalWeight,
+                        vNewVert._0,
+                        ref shColor
+                        );
+                    probeGen.vSHColors[vNewVert._0] = shColor;
+                }
+                {
+                    var shColor = new SHColor();
+                    _rebuildSH(
+                        ref tmpCamera,
+                        ref tmpTexture,
+                        fTotalWeight,
+                        vNewVert._1,
+                        ref shColor
+                        );
+                    probeGen.vSHColors[vNewVert._1] = shColor;
+                }
+                {
+                    var shColor = new SHColor();
+                    _rebuildSH(
+                        ref tmpCamera,
+                        ref tmpTexture,
+                        fTotalWeight,
+                        vNewVert._2,
+                        ref shColor
+                        );
+                    probeGen.vSHColors[vNewVert._2] = shColor;
+                }
+                {
+                    var shColor = new SHColor();
+                    _rebuildSH(
+                        ref tmpCamera,
+                        ref tmpTexture,
+                        fTotalWeight,
+                        vNewVert._3,
+                        ref shColor
+                        );
+                    probeGen.vSHColors[vNewVert._3] = shColor;
+                }
             }
 
             uint[] uRawSubAdjIndices = new uint[iTetCount * 4];
@@ -747,12 +843,17 @@ public class InfProbeGenInspector : Editor
             TGGetTetBaryMatrices(fRawSubBaryMatrices);
             probeGen.vTetBaryMatrices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubBaryMatrices));
 
+            probeGen.vTetDepthMap = new TetDepthMap[iTetCount];
+
             renderLines.Clear();
             foreach (var vTet in probeGen.vTetVertices)
                 _pushRenderTet(_prb_convert(vTet));
         }
 
         DestroyImmediate(tmpObject);
+
+        for (int i = 0; i < probeFinderList.Count; ++i)
+            probeFinderList[i].enabled = oldRendererVisible[i];
     }
 
     private static bool _rayTriIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, ref float t)
@@ -810,7 +911,7 @@ public class InfProbeGenInspector : Editor
                     var rToward = new Ray(vOrigin, vToward);
 
                     var fShortest = fLongest;
-                    foreach (var filter in meshList)
+                    foreach (var filter in renderableMeshList)
                     {
                         var bAABB = filter.sharedMesh.bounds;
                         var vAABBMin = filter.transform.TransformVector(bAABB.min);
@@ -871,9 +972,10 @@ public class InfProbeGenInspector : Editor
 
     private void _rebuildProbes()
     {
+        _findAllProbeFindRenderers();
         _generateTets();
-        _findAllMeshes();
-        //_fillDepthInfo();
+        _findAllRenderableMeshes();
+        _fillDepthInfo();
     }
 
 
@@ -881,15 +983,13 @@ public class InfProbeGenInspector : Editor
     {
         probeGen = (InfProbeGen)target;
 
-        bufTmpBuffers[0] = new ComputeBuffer(9 * 3, sizeof(float));
-        bufTmpBuffers[1] = new ComputeBuffer(6 * 9 * 3, sizeof(float));
-        bufTmpBuffers[2] = new ComputeBuffer(6 * PROBE_RENDER_SIZE * 9 * 3, sizeof(float));
+        bufTmpBuffers[0] = new ComputeBuffer(6 * 9 * 3, sizeof(float));
+        bufTmpBuffers[1] = new ComputeBuffer(6 * PROBE_RENDER_SIZE * 9 * 3, sizeof(float));
     }
     private void OnDisable()
     {
         bufTmpBuffers[0].Release();
         bufTmpBuffers[1].Release();
-        bufTmpBuffers[2].Release();
     }
 
     public override void OnInspectorGUI()
@@ -902,7 +1002,6 @@ public class InfProbeGenInspector : Editor
 
     private void OnSceneGUI()
     {
-        
         Handles.zTest = CompareFunction.Less;
 
         if (renderLines.Count > 0)
