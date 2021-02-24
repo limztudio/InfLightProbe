@@ -52,61 +52,63 @@ void CSMain(
 )
 {
     // cube map coordinate based on SHMath's DirectXMath
-    float3 vUV;
+    float3 vCubeCoord;
     [flatten]
     switch(uDispatchThreadID.z){
     case 0: // positive X
-        vUV.z = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
-        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vUV.x = 1.f;
+        vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.x = 1.f;
         break;
     case 1: // negative X
-        vUV.z = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
-        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vUV.x = -1.f;
+        vCubeCoord.z = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.x = -1.f;
         break;
 
     case 2: // positive Y
-        vUV.z = -1.f + (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vUV.y = 1.f;
-        vUV.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = -1.f + (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.y = 1.f;
+        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
         break;
     case 3: // negative Y
-        vUV.z = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vUV.y = -1.f;
-        vUV.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.y = -1.f;
+        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
         break;
 
     case 4: // positive Z
-        vUV.z = 1.f;
-        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vUV.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = 1.f;
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
         break;
     case 5: // negative Z
-        vUV.z = -1.f;
-        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vUV.x = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = -1.f;
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.x = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
         break;
 
     default: // error
-        vUV.x = 0.f;
-        vUV.y = 0.f;
-        vUV.z = 0.f;
+        vCubeCoord.x = 0.f;
+        vCubeCoord.y = 0.f;
+        vCubeCoord.z = 0.f;
         break;
     }
+    vCubeCoord = normalize(vCubeCoord);
 
-    const float fLenSq = dot(vUV, vUV);
-    const float fLenInv = rsqrt(fLenSq);
+    const float fB = -1.f + 1.f / float(MAP_SIZE);
+    const float fS = (2.f * (1.f - 1.f / float(MAP_SIZE)) / (float(MAP_SIZE) - 1.f));
+    const float3 vSolidUV = float3(float(uDispatchThreadID.x) * fS + fB, float(uDispatchThreadID.y) * fS + fB, 1.f);
+    const float fSolidDot = dot(vSolidUV, vSolidUV);
+    const float fSolidDotSqrtInv = rsqrt(fSolidDot);
 
-    vUV = vUV * fLenInv;
+    const float fDiffSolid = (4.f / fSolidDot) * fSolidDotSqrtInv;
 
-    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vUV, 0);
-    float fWeight = 4.f * fLenInv / fLenSq;
-
-    vColor *= fWeight;
+    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vCubeCoord, 0);
+    vColor *= fDiffSolid;
 
     float3 vSH[COFF_COUNT];
-    projectOntoSH(vUV, vColor, vSH);
+    projectOntoSH(vCubeCoord, vColor, vSH);
 
     [unroll]
     for(uint i = 0; i < COFF_COUNT; ++i)
