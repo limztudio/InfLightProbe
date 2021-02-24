@@ -71,7 +71,7 @@ public class InfProbeGenInspector : Editor
 
     private HashSet<TGRenderLine> renderLines = new HashSet<TGRenderLine>();
 
-    private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[2];
+    private ComputeBuffer[] bufTmpBuffers = new ComputeBuffer[3];
 
 
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -391,16 +391,21 @@ public class InfProbeGenInspector : Editor
 
             var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
             probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", tmpTexture);
-            probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+            probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[2]);
             probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
 
-            iKernel = probeGen.shdSHReductor.FindKernel("CSMain");
-            probeGen.shdSHReductor.SetFloat("FltTotalWeight", fTotalWeight);
-            probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
-            probeGen.shdSHReductor.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
-            probeGen.shdSHReductor.Dispatch(iKernel, 1, 1, 1);
+            iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
+            probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[2]);
+            probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[1]);
+            probeGen.shdSHReductor1.Dispatch(iKernel, 1, 6, 1);
 
-            vSH.SH = new float[9];
+            iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
+            probeGen.shdSHReductor2.SetFloat("FltTotalWeight", fTotalWeight);
+            probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
+            probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
+            probeGen.shdSHReductor2.Dispatch(iKernel, 1, 1, 1);
+
+            vSH.SH = new float[9 * 3];
             bufTmpBuffers[0].GetData(vSH.SH);
 
             cachedSHList.Add(vPos, vSH);
@@ -868,7 +873,7 @@ public class InfProbeGenInspector : Editor
     {
         _generateTets();
         _findAllMeshes();
-        _fillDepthInfo();
+        //_fillDepthInfo();
     }
 
 
@@ -876,13 +881,15 @@ public class InfProbeGenInspector : Editor
     {
         probeGen = (InfProbeGen)target;
 
-        bufTmpBuffers[0] = new ComputeBuffer(9, sizeof(float) * 3);
-        bufTmpBuffers[1] = new ComputeBuffer(PROBE_RENDER_SIZE * 9, sizeof(float) * 3);
+        bufTmpBuffers[0] = new ComputeBuffer(9 * 3, sizeof(float));
+        bufTmpBuffers[1] = new ComputeBuffer(6 * 9 * 3, sizeof(float));
+        bufTmpBuffers[2] = new ComputeBuffer(6 * PROBE_RENDER_SIZE * 9 * 3, sizeof(float));
     }
     private void OnDisable()
     {
         bufTmpBuffers[0].Release();
         bufTmpBuffers[1].Release();
+        bufTmpBuffers[2].Release();
     }
 
     public override void OnInspectorGUI()

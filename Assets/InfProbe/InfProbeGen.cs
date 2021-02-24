@@ -37,7 +37,8 @@ public struct TetDepthMap
 public class InfProbeGen : MonoBehaviour
 {
     public ComputeShader shdSHIntegrator;
-    public ComputeShader shdSHReductor;
+    public ComputeShader shdSHReductor1;
+    public ComputeShader shdSHReductor2;
     public Vector3 vAABBExtents = new Vector3(50, 50, 50);
     public Vector3 vProbeSpacing = new Vector3(5, 5, 5);
 

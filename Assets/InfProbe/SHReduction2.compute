@@ -1,0 +1,41 @@
+#pragma kernel CSMain
+
+
+#define COFF_COUNT 9
+
+
+float FltTotalWeight;
+
+Buffer<float> BufCoeff;
+
+RWBuffer<float> BufCoeffAcc;
+
+
+groupshared float3 BufTmpCoeff[6][COFF_COUNT];
+
+
+[numthreads(6, 1, COFF_COUNT)]
+void CSMain(
+    uint3 uGroupID : SV_GroupID,
+    uint3 uDispatchThreadID : SV_DispatchThreadID,
+    uint3 uGroupThreadID : SV_GroupThreadID,
+    uint uGuroupIndex : SV_GroupIndex
+)
+{
+    BufTmpCoeff[uGroupThreadID.x][uGroupThreadID.z].x = BufCoeff[uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 0];
+    BufTmpCoeff[uGroupThreadID.x][uGroupThreadID.z].y = BufCoeff[uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 1];
+    BufTmpCoeff[uGroupThreadID.x][uGroupThreadID.z].z = BufCoeff[uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 2];
+    GroupMemoryBarrierWithGroupSync();
+
+    if(uGroupThreadID.x == 0){
+        [unroll]
+        for(uint i = 1; i < 6; ++i)
+            BufTmpCoeff[uGroupThreadID.x][uGroupThreadID.z] += BufTmpCoeff[uGroupThreadID.x + i][uGroupThreadID.z];
+
+        float3 fReturn = BufTmpCoeff[0][uGroupThreadID.z] * FltTotalWeight;
+        BufCoeffAcc[uGroupThreadID.z * 3 + 0] = fReturn.x;
+        BufCoeffAcc[uGroupThreadID.z * 3 + 1] = fReturn.y;
+        BufCoeffAcc[uGroupThreadID.z * 3 + 2] = fReturn.z;
+    }
+}
+

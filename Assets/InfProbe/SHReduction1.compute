@@ -1,0 +1,42 @@
+#pragma kernel CSMain
+
+
+#define MAP_SIZE 64
+#define COFF_COUNT 9
+
+
+Buffer<float> BufCoeff;
+
+RWBuffer<float> BufCoeffAcc;
+
+
+groupshared float3 BufTmpCoeffAcc[MAP_SIZE][COFF_COUNT];
+
+
+[numthreads(MAP_SIZE, 1, COFF_COUNT)]
+void CSMain(
+    uint3 uGroupID : SV_GroupID,
+    uint3 uDispatchThreadID : SV_DispatchThreadID,
+    uint3 uGroupThreadID : SV_GroupThreadID,
+    uint uGuroupIndex : SV_GroupIndex
+)
+{
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].x = BufCoeff[uGroupID.y * MAP_SIZE * COFF_COUNT * 3 + uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 0];
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].y = BufCoeff[uGroupID.y * MAP_SIZE * COFF_COUNT * 3 + uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 1];
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].z = BufCoeff[uGroupID.y * MAP_SIZE * COFF_COUNT * 3 + uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 2];
+    GroupMemoryBarrierWithGroupSync();
+
+    [unroll(MAP_SIZE)]
+    for(uint i = MAP_SIZE >> 1; i > 0; i >>= 1){
+        if(uGroupThreadID.x < i)
+            BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z] += BufTmpCoeffAcc[uGroupThreadID.x + i][uGroupThreadID.z];
+        GroupMemoryBarrierWithGroupSync();
+    }
+
+    if(uGroupThreadID.x == 0){
+        BufCoeffAcc[uGroupID.y * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 0] = BufTmpCoeffAcc[0][uGroupThreadID.z].x;
+        BufCoeffAcc[uGroupID.y * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 1] = BufTmpCoeffAcc[0][uGroupThreadID.z].y;
+        BufCoeffAcc[uGroupID.y * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 2] = BufTmpCoeffAcc[0][uGroupThreadID.z].z;
+    }
+}
+
