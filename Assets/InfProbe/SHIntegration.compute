@@ -51,7 +51,7 @@ void CSMain(
     uint uGuroupIndex : SV_GroupIndex
 )
 {
-    // cube map coordinate based on SHMath's DirectXMath
+    // cube map coordinate based on SHMath of DirectXMath
     float3 vCubeCoord;
     [flatten]
     switch(uDispatchThreadID.z){
