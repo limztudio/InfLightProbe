@@ -19,26 +19,6 @@ RWBuffer<float> BufCoeff;
 groupshared float3 BufTmpCoeffAcc[MAP_SIZE][COFF_COUNT];
 
 
-float3 transformCubeDir(in uint n, in float3 dir){
-    switch(n){
-    case 0:
-        return float3(+dir.z, +dir.y, +dir.x);
-    case 1:
-        return float3(-dir.z, dir.y, dir.x);
-    case 2:
-        return float3(+dir.y, +dir.z, +dir.x);
-    case 3:
-        return float3(dir.y, -dir.z, dir.x);
-    case 4:
-        return float3(+dir.x, +dir.y, +dir.z);
-    case 5:
-        return float3(dir.x, dir.y, -dir.z);
-    default:
-        return dir;
-    }
-    return dir;
-}
-
 void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
     // Cosine kernel
     const float Pi = 3.141593f;
@@ -71,24 +51,62 @@ void CSMain(
     uint uGuroupIndex : SV_GroupIndex
 )
 {
-    float3 vSHUV = float3(
-        ((uDispatchThreadID.x / float(MAP_SIZE)) * 2.f) - 1.f,
-        ((uDispatchThreadID.y / float(MAP_SIZE)) * 2.f) - 1.f,
-        1.f
-        );
-    float fLenSq = dot(vSHUV, vSHUV);
-    float fLenInv = rsqrt(fLenSq);
+    // cube map coordinate based on SHMath's DirectXMath
+    float3 vUV;
+    [flatten]
+    switch(uDispatchThreadID.z){
+    case 0: // positive X
+        vUV.z = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vUV.x = 1.f;
+        break;
+    case 1: // negative X
+        vUV.z = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vUV.x = -1.f;
+        break;
 
-    vSHUV = vSHUV * fLenInv;
-    vSHUV = transformCubeDir(uDispatchThreadID.z, vSHUV);
+    case 2: // positive Y
+        vUV.z = -1.f + (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vUV.y = 1.f;
+        vUV.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        break;
+    case 3: // negative Y
+        vUV.z = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vUV.y = -1.f;
+        vUV.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        break;
 
-    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vSHUV, 0);
+    case 4: // positive Z
+        vUV.z = 1.f;
+        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vUV.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        break;
+    case 5: // negative Z
+        vUV.z = -1.f;
+        vUV.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vUV.x = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        break;
+
+    default: // error
+        vUV.x = 0.f;
+        vUV.y = 0.f;
+        vUV.z = 0.f;
+        break;
+    }
+
+    const float fLenSq = dot(vUV, vUV);
+    const float fLenInv = rsqrt(fLenSq);
+
+    vUV = vUV * fLenInv;
+
+    float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vUV, 0);
     float fWeight = 4.f * fLenInv / fLenSq;
 
     vColor *= fWeight;
 
     float3 vSH[COFF_COUNT];
-    projectOntoSH(vSHUV, vColor, vSH);
+    projectOntoSH(vUV, vColor, vSH);
 
     [unroll]
     for(uint i = 0; i < COFF_COUNT; ++i)
