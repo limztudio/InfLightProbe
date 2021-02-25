@@ -31,12 +31,12 @@ public class InfProbeFinder : MonoBehaviour
 
     private void Awake()
     {
-        probeGen = objProbeGen.GetComponent<InfProbeGen>();
+        InitProbeFinder();
     }
 
     private void Start()
     {
-        
+        InitProbeFinder();
     }
 
     private void Update()
@@ -86,40 +86,37 @@ public class InfProbeFinder : MonoBehaviour
         }
         else
         {
-            shColor = new SHColor();
-            var shTmpColor = new SHColor();
+            //shColor = new SHColor();
+            //var shTmpColor = new SHColor();
 
-            if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._0, out shTmpColor))
-            {
-                for (int i = 0; i < 9; ++i)
-                    shColor.SH[i] = shTmpColor.SH[i] * fWeight[0];
-            }
-            if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._1, out shTmpColor))
-            {
-                for (int i = 0; i < 9; ++i)
-                    shColor.SH[i] += shTmpColor.SH[i] * fWeight[1];
-            }
-            if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._2, out shTmpColor))
-            {
-                for (int i = 0; i < 9; ++i)
-                    shColor.SH[i] += shTmpColor.SH[i] * fWeight[2];
-            }
-            if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._3, out shTmpColor))
-            {
-                for (int i = 0; i < 9; ++i)
-                    shColor.SH[i] += shTmpColor.SH[i] * fWeight[3];
-            }
+            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._0, out shTmpColor))
+            //{
+            //    for (int i = 0; i < 9; ++i)
+            //        shColor.SH[i] = shTmpColor.SH[i] * fWeight[0];
+            //}
+            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._1, out shTmpColor))
+            //{
+            //    for (int i = 0; i < 9; ++i)
+            //        shColor.SH[i] += shTmpColor.SH[i] * fWeight[1];
+            //}
+            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._2, out shTmpColor))
+            //{
+            //    for (int i = 0; i < 9; ++i)
+            //        shColor.SH[i] += shTmpColor.SH[i] * fWeight[2];
+            //}
+            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._3, out shTmpColor))
+            //{
+            //    for (int i = 0; i < 9; ++i)
+            //        shColor.SH[i] += shTmpColor.SH[i] * fWeight[3];
+            //}
         }
+    }
+    public void InitProbeFinder()
+    {
+        probeGen = objProbeGen.GetComponent<InfProbeGen>();
     }
     public void UpdateProbe()
     {
-        if (probeGen == null)
-        {
-            probeGen = objProbeGen.GetComponent<InfProbeGen>();
-            if (probeGen == null)
-                return;
-        }
-
         var vCurPos = transform.position;
         if(vOldPos != vCurPos)
         {

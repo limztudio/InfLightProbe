@@ -65,7 +65,8 @@ public class InfProbeGenInspector : Editor
 
     private InfProbeGen probeGen;
 
-    private List<Renderer> probeFinderList = new List<Renderer>();
+    private List<InfProbeFinder> probeFinderList = new List<InfProbeFinder>();
+    private List<Renderer> probeFinderRendererList = new List<Renderer>();
     private List<MeshFilter> renderableMeshList = new List<MeshFilter>();
 
     private Dictionary<Vector3, SHColor> cachedSHList = new Dictionary<Vector3, SHColor>();
@@ -289,42 +290,39 @@ public class InfProbeGenInspector : Editor
         return vOut;
     }
 
-    private static bool _compareSH(ref SHColor vLHS, ref SHColor vRHS, float fDIFF)
+    private static bool _compareSH(ref SHColor vLhs, ref SHColor vRhs, float fDiff)
     {
         for (int i = 0; i < 9; ++i)
         {
-            var v = Mathf.Abs(vLHS.SH[i].x - vRHS.SH[i].x);
-            if (v > fDIFF)
+            var v = Mathf.Abs(vLhs.SH[i].x - vRhs.SH[i].x);
+            if (v > fDiff)
                 return false;
 
-            v = Mathf.Abs(vLHS.SH[i].y - vRHS.SH[i].y);
-            if (v > fDIFF)
+            v = Mathf.Abs(vLhs.SH[i].y - vRhs.SH[i].y);
+            if (v > fDiff)
                 return false;
 
-            v = Mathf.Abs(vLHS.SH[i].z - vRHS.SH[i].z);
-            if (v > fDIFF)
+            v = Mathf.Abs(vLhs.SH[i].z - vRhs.SH[i].z);
+            if (v > fDiff)
                 return false;
         }
         return true;
     }
-    private static SHColor _averageSH(ref SHColor[] vSHs)
+    private static bool _compareSHs(ref SHColor[] vSHs, float fDiff)
     {
-        SHColor vSH = new SHColor();
-        vSH.SH = new Vector3[9];
-
-        for (int i = 0; i < 9; ++i)
-            vSH.SH[i] = Vector3.zero;
-
-        foreach (var j in vSHs)
+        for (int i = 0; i < vSHs.Length; ++i)
         {
-            for (int i = 0; i < 9; ++i)
-                vSH.SH[i] += j.SH[i];
+            ref var vLhs = ref vSHs[i];
+
+            for (int j = i + 1; j < vSHs.Length; ++j)
+            {
+                ref var vRhs = ref vSHs[j];
+
+                if (!_compareSH(ref vLhs, ref vRhs, fDiff))
+                    return false;
+            }
         }
-
-        for (int i = 0; i < 9; ++i)
-            vSH.SH[i] /= (float)vSHs.Length;
-
-        return vSH;
+        return true;
     }
 
 
@@ -360,6 +358,7 @@ public class InfProbeGenInspector : Editor
     private void _findAllProbeFindRenderers()
     {
         probeFinderList.Clear();
+        probeFinderRendererList.Clear();
 
         foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
         {
@@ -370,12 +369,17 @@ public class InfProbeGenInspector : Editor
 
             if (!EditorUtility.IsPersistent(gObj.transform.root.gameObject) && !(gObj.hideFlags == HideFlags.NotEditable || gObj.hideFlags == HideFlags.HideAndDontSave))
             {
+                foreach (var probeFinder in gObj.GetComponentsInChildren<InfProbeFinder>(false))
+                {
+                    probeFinderList.Add(probeFinder);
+                }
+
                 foreach (var renderer in gObj.GetComponentsInChildren<Renderer>(false))
                 {
                     if ((renderer.GetComponents<InfProbeFinder>().Length + renderer.GetComponentsInChildren<InfProbeFinder>().Length) <= 0)
                         continue;
 
-                    probeFinderList.Add(renderer);
+                    probeFinderRendererList.Add(renderer);
                 }
             }
         }
@@ -453,8 +457,7 @@ public class InfProbeGenInspector : Editor
         ref Camera tmpCamera,
         ref Cubemap tmpTexture,
         float fTotalWeight,
-        TGVector4x3 vParentTet,
-        SHColor shParentAverage
+        TGVector4x3 vParentTet
         )
     {
         TGVector4x3[] vSubTets;
@@ -500,8 +503,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
-            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            if (_compareSHs(ref sHColors, probeGen.fSHDiff))
             {
                 foreach (var v in vParentTet.vectors)
                     cachedSubPositions.Add(v);
@@ -512,8 +514,7 @@ public class InfProbeGenInspector : Editor
                 ref tmpCamera,
                 ref tmpTexture,
                 fTotalWeight,
-                vSubTet,
-                shAverage
+                vSubTet
                 );
         }
         foreach (var vSubOct in vSubOcts)
@@ -540,8 +541,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
-            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            if (_compareSHs(ref sHColors, probeGen.fSHDiff))
             {
                 foreach (var v in vParentTet.vectors)
                     cachedSubPositions.Add(v);
@@ -552,8 +552,7 @@ public class InfProbeGenInspector : Editor
                 ref tmpCamera,
                 ref tmpTexture,
                 fTotalWeight,
-                vSubOct,
-                shAverage
+                vSubOct
                 );
         }
     }
@@ -561,8 +560,7 @@ public class InfProbeGenInspector : Editor
         ref Camera tmpCamera,
         ref Cubemap tmpTexture,
         float fTotalWeight,
-        TGVector6x3 vParentOct,
-        SHColor shParentAverage
+        TGVector6x3 vParentOct
         )
     {
         TGVector4x3[] vSubTets;
@@ -608,8 +606,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
-            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            if (_compareSHs(ref sHColors, probeGen.fSHDiff))
             {
                 foreach (var v in vParentOct.vectors)
                     cachedSubPositions.Add(v);
@@ -620,8 +617,7 @@ public class InfProbeGenInspector : Editor
                 ref tmpCamera,
                 ref tmpTexture,
                 fTotalWeight,
-                vSubTet,
-                shAverage
+                vSubTet
                 );
         }
         foreach (var vSubOct in vSubOcts)
@@ -648,8 +644,7 @@ public class InfProbeGenInspector : Editor
                     ref sHColors[j]
                     );
             }
-            var shAverage = _averageSH(ref sHColors);
-            if (_compareSH(ref shAverage, ref shParentAverage, probeGen.fSHDiff))
+            if (_compareSHs(ref sHColors, probeGen.fSHDiff))
             {
                 foreach (var v in vParentOct.vectors)
                     cachedSubPositions.Add(v);
@@ -660,8 +655,7 @@ public class InfProbeGenInspector : Editor
                 ref tmpCamera,
                 ref tmpTexture,
                 fTotalWeight,
-                vSubOct,
-                shAverage
+                vSubOct
                 );
         }
     }
@@ -703,11 +697,11 @@ public class InfProbeGenInspector : Editor
             fTotalWeight = (4.0f * 3.14159f) / fTotalWeight;
         }
 
-        bool[] oldRendererVisible = new bool[probeFinderList.Count];
-        for (int i = 0; i < probeFinderList.Count; ++i)
+        bool[] oldRendererVisible = new bool[probeFinderRendererList.Count];
+        for (int i = 0; i < probeFinderRendererList.Count; ++i)
         {
-            oldRendererVisible[i] = probeFinderList[i].enabled;
-            probeFinderList[i].enabled = false;
+            oldRendererVisible[i] = probeFinderRendererList[i].enabled;
+            probeFinderRendererList[i].enabled = false;
         }
 
         {
@@ -747,14 +741,12 @@ public class InfProbeGenInspector : Editor
                         ref shColors[j]
                         );
                 }
-                var shAverage = _averageSH(ref shColors);
 
                 _subdivideTet(
                     ref tmpCamera,
                     ref tmpTexture,
                     fTotalWeight,
-                    vRootTetVertices[i],
-                    shAverage
+                    vRootTetVertices[i]
                     );
             }
         }
@@ -852,8 +844,11 @@ public class InfProbeGenInspector : Editor
 
         DestroyImmediate(tmpObject);
 
-        for (int i = 0; i < probeFinderList.Count; ++i)
-            probeFinderList[i].enabled = oldRendererVisible[i];
+        for (int i = 0; i < probeFinderRendererList.Count; ++i)
+            probeFinderRendererList[i].enabled = oldRendererVisible[i];
+
+        foreach (var probeFinder in probeFinderList)
+            probeFinder.iLastProbe = 0;
     }
 
     private static bool _rayTriIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, ref float t)

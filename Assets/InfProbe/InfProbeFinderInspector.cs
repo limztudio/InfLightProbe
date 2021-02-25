@@ -13,6 +13,8 @@ public class InfProbeFinderInspector : Editor
     private void OnEnable()
     {
         probeFinder = (InfProbeFinder)target;
+
+        probeFinder.InitProbeFinder();
     }
     private void OnDisable()
     {
