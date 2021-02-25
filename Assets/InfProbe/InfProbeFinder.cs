@@ -13,7 +13,7 @@ public class InfProbeFinder : MonoBehaviour
     public int iLastProbe = 0;
     public SHColor shColor;
 
-    private static int ToIndex(TetInt4 v, int i)
+    private static int ToIndex(ref TetInt4 v, int i)
     {
         switch (i)
         {
@@ -28,7 +28,7 @@ public class InfProbeFinder : MonoBehaviour
         }
         return v._3;
     }
-    private static byte ToIndex(TetDepth v, int i)
+    private static byte ToIndex(ref TetDepth v, int i)
     {
         switch (i)
         {
@@ -86,14 +86,55 @@ public class InfProbeFinder : MonoBehaviour
 
         var fW2 = Vector3.Cross(v0P, v1P).magnitude * fWholeAreaRatioInv;
         var fW1 = Vector3.Cross(v0P, v2P).magnitude * fWholeAreaRatioInv;
-        var fW0 = 1.0f - fW1 - fW2;
+        
+        // UV0 is (0, 0), so it is okay to be skipped
+        var vUV1 = new Vector2(1.0f, 0.0f);
+        var vUV2 = new Vector2(0.0f, 1.0f);
 
-        var vUV0 = new Vector2(0, 0);
-        var vUV1 = new Vector2(1, 0);
-        var vUV2 = new Vector2(0, 1);
-
-        var vUVP = (vUV0 * fW0) + (vUV1 * fW1) + (vUV2 * fW2);
+        var vUVP = (vUV1 * fW1) + (vUV2 * fW2);
         return vUVP;
+    }
+    private static float GetFaceDepthOnPoint(ref TetDepth vDepth, ref Vector2 vBary)
+    {
+        var fSampleY = Mathf.Floor(vBary.y * 4.0f);
+        var fSampleX = Mathf.Floor(vBary.x * 4.0f);
+
+        var iBaseIndex = (int)(((11.0f - fSampleY) * fSampleY) * 0.5f + fSampleX + 0.5f);
+        var iLineLength = 5 - (int)fSampleY;
+
+        var vBaseBary = new Vector2(fSampleX * 0.25f, fSampleY * 0.25f);
+
+        var iIndices = new int[] { iBaseIndex + 1, iBaseIndex + iLineLength, iBaseIndex };
+        var fSampleBaries = new float[3];
+        fSampleBaries[0] = (vBary.x - vBaseBary.x) * 4.0f;
+        fSampleBaries[1] = (vBary.y - vBaseBary.y) * 4.0f;
+
+        if ((fSampleBaries[0] + fSampleBaries[1]) > 1.0f)
+        { // above the diagonal
+            iIndices[0] = iBaseIndex + iLineLength;
+            iIndices[1] = iBaseIndex + 1;
+            iIndices[2] = iBaseIndex + iLineLength + 1;
+
+            var fTmpSampleBaryX = -(fSampleBaries[1] - 1.0f);
+            var fTmpSampleBaryY = -(fSampleBaries[0] - 1.0f);
+
+            fSampleBaries[0] = fTmpSampleBaryX;
+            fSampleBaries[1] = fTmpSampleBaryY;
+        }
+
+        fSampleBaries[2] = 1.0f - fSampleBaries[0] - fSampleBaries[1];
+
+        var fResult = 0.0f;
+        for (int i = 0; i < 3; ++i)
+        {
+            var iIndex = iIndices[i] % 15;
+            var fDepth = ToIndex(ref vDepth, iIndex) / 255.0f;
+
+            fDepth *= fSampleBaries[i];
+            fResult += fDepth;
+        }
+
+        return fResult;
     }
 
     private void Awake()
@@ -140,7 +181,7 @@ public class InfProbeFinder : MonoBehaviour
 
         if (fMin < -0.0001f)
         {
-            int iNextProbe = ToIndex(probeGen.vTetAdjIndices[iLastProbe], iMin);
+            int iNextProbe = ToIndex(ref probeGen.vTetAdjIndices[iLastProbe], iMin);
             if (iNextProbe == -1)
             { // do extrapolation
                 // seems on Unity:
@@ -159,6 +200,7 @@ public class InfProbeFinder : MonoBehaviour
         else
         {
             ref var vTetVertex = ref probeGen.vTetVertices[iLastProbe];
+            ref var vTetDepthMap = ref probeGen.vTetDepthMap[iLastProbe];
 
             { // 0 -> 1, 2, 3
                 ref var v0 = ref vTetVertex._1;
@@ -169,6 +211,7 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
                 var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._0, ref vBary) < 0.9998f ? 0.0f : 1.0f;
 
             }
 
@@ -181,7 +224,7 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
                 var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._1, ref vBary) < 0.9998f ? 0.0f : 1.0f;
             }
 
             { // 2 -> 0, 1, 3
@@ -193,7 +236,7 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
                 var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._2, ref vBary) < 0.9998f ? 0.0f : 1.0f;
             }
 
             { // 3 -> 0, 1, 2
@@ -205,7 +248,7 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
                 var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._3, ref vBary) < 0.9998f ? 0.0f : 1.0f;
             }
 
             shColor = new SHColor();
