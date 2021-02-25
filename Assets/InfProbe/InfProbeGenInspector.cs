@@ -65,6 +65,14 @@ public class InfProbeGenInspector : Editor
 
     private InfProbeGen probeGen;
 
+    private int[] depthIndexTable = new int[] {
+        0,
+        5, 1,
+        9, 6, 2,
+        12, 10, 7, 3,
+        14, 13, 11, 8, 4
+    };
+
     private List<InfProbeFinder> probeFinderList = new List<InfProbeFinder>();
     private List<Renderer> probeFinderRendererList = new List<Renderer>();
     private List<MeshFilter> renderableMeshList = new List<MeshFilter>();
@@ -886,10 +894,24 @@ public class InfProbeGenInspector : Editor
     {
         int iID = 0;
 
+        // (0,0)      (1,0)
+        //  v0 ------- v1
+        //  |         /
+        //  |        /
+        //  |       /
+        //  |      /
+        //  |     /
+        //  |    /
+        //  |   /
+        //  |  /
+        //  | /
+        //  v2
+        // (0,1)
+
         for (int i = 0; i <= 4; ++i)
         {
-            var vP = Vector3.Lerp(v0, v1, i * 0.25f);
-            var vQ = Vector3.Lerp(v0, v2, i * 0.25f);
+            var vP = Vector3.Lerp(v0, v2, i * 0.25f);
+            var vQ = Vector3.Lerp(v0, v1, i * 0.25f);
 
             for (int j = 0; j <= i; ++j)
             {
@@ -938,7 +960,7 @@ public class InfProbeGenInspector : Editor
                     fShortest /= fLongest;
                     fShortest *= 255.0f;
                     fShortest = Mathf.Clamp(fShortest, 0.0f, 255.0f);
-                    _prb_depthToIndex(ref tetDepth, iID++) = (byte)fShortest;
+                    _prb_depthToIndex(ref tetDepth, depthIndexTable[iID++]) = (byte)fShortest;
                 }
             }
         }
@@ -950,16 +972,16 @@ public class InfProbeGenInspector : Editor
             var vTet = probeGen.vTetVertices[i];
             ref var iTetDepth = ref probeGen.vTetDepthMap[i];
 
-            { // 0 -> 1 2 3
+            { // 0 -> 1, 2, 3
                 _fillTriInfo(ref iTetDepth._0, vTet._0, vTet._1, vTet._2, vTet._3);
             }
-            { // 1 -> 0 2 3
+            { // 1 -> 0, 2, 3
                 _fillTriInfo(ref iTetDepth._1, vTet._1, vTet._0, vTet._2, vTet._3);
             }
-            { // 2 -> 0 1 3
+            { // 2 -> 0, 1, 3
                 _fillTriInfo(ref iTetDepth._2, vTet._2, vTet._0, vTet._1, vTet._3);
             }
-            { // 3 -> 0 1 2
+            { // 3 -> 0, 1, 2
                 _fillTriInfo(ref iTetDepth._3, vTet._3, vTet._0, vTet._1, vTet._2);
             }
         }

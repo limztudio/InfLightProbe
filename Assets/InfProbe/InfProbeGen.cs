@@ -21,11 +21,11 @@ public struct TetInt4
 [System.Serializable]
 public struct TetDepth
 {
-    public byte _00;
-    public byte _01, _02;
-    public byte _03, _04, _05;
-    public byte _06, _07, _08, _09;
-    public byte _10, _11, _12, _13, _14;
+    public byte _00, _01, _02, _03, _04;
+    public byte _05, _06, _07, _08;
+    public byte _09, _10, _11;
+    public byte _12, _13;
+    public byte _14;
 };
 [System.Serializable]
 public struct TetDepthMap
