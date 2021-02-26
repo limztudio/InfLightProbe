@@ -763,6 +763,7 @@ public class InfProbeGenInspector : Editor
             TGGetTetIntraIndices(uRawSubIntraIndices);
             TGUint4[] vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
 
+            probeGen.vSHColors = new Dictionary<Vector3, SHColor>();
             probeGen.vSHColors.Clear();
             for (i = 0; i < iTetCount; ++i)
             {

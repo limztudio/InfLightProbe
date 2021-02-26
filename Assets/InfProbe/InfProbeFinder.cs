@@ -79,24 +79,35 @@ public class InfProbeFinder : MonoBehaviour
         return v._14;
     }
 
-    private static Vector3 ProjectPointOntoFace(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP, ref float fNormalLength)
+    private static Vector3 IntersectPointWithFace(Vector3 vTri0, Vector3 vTri1, Vector3 vTri2, Vector3 vLine0, Vector3 vLine1, out float fDepth)
     {
-        var vOrigin = vP - v0;
-        var vFaceNormal = Vector3.Cross((v1 - v0), (v2 - v0));
-        var fNormalLengthSq = vFaceNormal.sqrMagnitude;
-        if(fNormalLengthSq > 0.0001f)
+        var vFaceNormal = Vector3.Cross((vTri1 - vTri0), (vTri2 - vTri0));
+        var fFaceNormalLengthSq = vFaceNormal.sqrMagnitude;
+        if (fFaceNormalLengthSq > 0.0001f)
         {
-            fNormalLength = Mathf.Sqrt(fNormalLengthSq);
-            vFaceNormal /= fNormalLength;
+            var fFaceNormalLength = Mathf.Sqrt(fFaceNormalLengthSq);
+            vFaceNormal /= fFaceNormalLength;
         }
 
-        var fDist = Vector3.Dot(vOrigin, vFaceNormal);
+        var vLineNormal = vLine1 - vLine0;
+        var fLineNormalLengthSq = vLineNormal.sqrMagnitude;
+        var fLineNormalLength = 0.0f;
+        if (fLineNormalLengthSq > 0.0001f)
+        {
+            fLineNormalLength = Mathf.Sqrt(fLineNormalLengthSq);
+            vLineNormal /= fLineNormalLength;
+        }
 
-        var vProjected = vP - (vFaceNormal * fDist);
+        var fP = Vector3.Dot(vFaceNormal, vTri0) - Vector3.Dot(vFaceNormal, vLine1);
+        var fQ = Vector3.Dot(vFaceNormal, vLineNormal);
+        var fT = fP / fQ;
 
-        return vProjected;
+        var vIntersected = vLine1 + (vLineNormal * fT);
+        fDepth = fLineNormalLength / (fLineNormalLength + fT);
+
+        return vIntersected;
     }
-    private static Vector2 MakeBaryCoord(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP, float fWholeAreaRatioInv)
+    private static Vector2 MakeBaryCoord(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP)
     {
         var v0P = v0 - vP;
         var v1P = v1 - vP;
@@ -104,12 +115,17 @@ public class InfProbeFinder : MonoBehaviour
 
         var vA2 = Vector3.Cross(v0P, v1P);
         var vA1 = Vector3.Cross(v0P, v2P);
+        var vA0 = Vector3.Cross(v1P, v2P);
 
         var fW2 = vA2.magnitude;
         var fW1 = vA1.magnitude;
+        var fW0 = vA0.magnitude;
 
-        fW2 *= fWholeAreaRatioInv;
-        fW1 *= fWholeAreaRatioInv;
+        var fWT = fW0 + fW1 + fW2;
+        fWT = 1.0f / fWT;
+
+        fW2 *= fWT;
+        fW1 *= fWT;
 
         // UV0 is (0, 0), so it is okay to be skipped
         var vUV1 = new Vector2(1.0f, 0.0f);
@@ -117,8 +133,33 @@ public class InfProbeFinder : MonoBehaviour
 
         var vUVP = (vUV1 * fW1) + (vUV2 * fW2);
         return vUVP;
+
+
+        // follwing code is pre-calculate total area ratio of triangle. so it doesn't need to calculate additional Cross, Dot and Sqrt computation.
+        // so it supposed to working correctly, but seems it's not.
+        // still looking for where is the error come from.
+
+        //var v0P = v0 - vP;
+        //var v1P = v1 - vP;
+        //var v2P = v2 - vP;
+
+        //var vA2 = Vector3.Cross(v0P, v1P);
+        //var vA1 = Vector3.Cross(v0P, v2P);
+
+        //var fW2 = vA2.magnitude;
+        //var fW1 = vA1.magnitude;
+
+        //fW2 *= fWholeAreaRatioInv;
+        //fW1 *= fWholeAreaRatioInv;
+
+        //// UV0 is (0, 0), so it is okay to be skipped
+        //var vUV1 = new Vector2(1.0f, 0.0f);
+        //var vUV2 = new Vector2(0.0f, 1.0f);
+
+        //var vUVP = (vUV1 * fW1) + (vUV2 * fW2);
+        //return vUVP;
     }
-    private static float GetFaceDepthOnPoint(ref TetDepth vDepth, Vector2 vBary)
+    private static float GetFaceDepthOnPoint(TetDepth vDepth, Vector2 vBary)
     {
         var fSampleY = Mathf.Floor(vBary.y * 4.0f);
         var fSampleX = Mathf.Floor(vBary.x * 4.0f);
@@ -233,56 +274,56 @@ public class InfProbeFinder : MonoBehaviour
             var fTotalWeightWithDepth = 0.0f;
 
             { // 0 -> 1, 2, 3
-                var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, ref fWholeAreaRatio);
-                var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._0, vBary) < 0.9998f ? 0.0f : 1.0f;
+                var fLineDepth = new float();
+                var vP = IntersectPointWithFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vTetVertex._0, vCurPos, out fLineDepth);
+                var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos);
+                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
+                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
 
                 fWeights[0] = (vTetVertex._0 - vP).magnitude;
-                fWeightsWithDepth[0] = fWeights[0] * fDepth;
+                fWeightsWithDepth[0] = fWeights[0] * fOccluded;
 
                 fTotalWeight += fWeights[0];
                 fTotalWeightWithDepth += fWeightsWithDepth[0];
             }
 
             { // 1 -> 0, 2, 3
-                var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos, ref fWholeAreaRatio);
-                var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._1, vBary) < 0.9998f ? 0.0f : 1.0f;
+                var fLineDepth = new float();
+                var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vTetVertex._1, vCurPos, out fLineDepth);
+                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos);
+                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
+                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
 
                 fWeights[1] = (vTetVertex._1 - vP).magnitude;
-                fWeightsWithDepth[1] = fWeights[1] * fDepth;
+                fWeightsWithDepth[1] = fWeights[1] * fOccluded;
 
                 fTotalWeight += fWeights[1];
                 fTotalWeightWithDepth += fWeightsWithDepth[1];
             }
 
             { // 2 -> 0, 1, 3
-                var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos, ref fWholeAreaRatio);
-                var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._2, vBary) < 0.9998f ? 0.0f : 1.0f;
+                var fLineDepth = new float();
+                var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vTetVertex._2, vCurPos, out fLineDepth);
+                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos);
+                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
+                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
 
                 fWeights[2] = (vTetVertex._2 - vP).magnitude;
-                fWeightsWithDepth[2] = fWeights[2] * fDepth;
+                fWeightsWithDepth[2] = fWeights[2] * fOccluded;
 
                 fTotalWeight += fWeights[2];
                 fTotalWeightWithDepth += fWeightsWithDepth[2];
             }
 
             { // 3 -> 0, 1, 2
-                var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos, ref fWholeAreaRatio);
-                var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._3, vBary) < 0.9998f ? 0.0f : 1.0f;
+                var fLineDepth = new float();
+                var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, out fLineDepth);
+                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos);
+                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
+                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
 
                 fWeights[3] = (vTetVertex._3 - vP).magnitude;
-                fWeightsWithDepth[3] = fWeights[3] * fDepth;
+                fWeightsWithDepth[3] = fWeights[3] * fOccluded;
 
                 fTotalWeight += fWeights[3];
                 fTotalWeightWithDepth += fWeightsWithDepth[3];

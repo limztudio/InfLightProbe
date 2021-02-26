@@ -49,7 +49,7 @@ public class InfProbeGen : MonoBehaviour
     public TetFloat43[] vTetBaryMatrices;
     public TetDepthMap[] vTetDepthMap;
 
-    public Dictionary<Vector3, SHColor> vSHColors = new Dictionary<Vector3, SHColor>();
+    public Dictionary<Vector3, SHColor> vSHColors;
 
     private void Awake()
     {
