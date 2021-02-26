@@ -277,8 +277,8 @@ public class InfProbeFinder : MonoBehaviour
                 var fLineDepth = new float();
                 var vP = IntersectPointWithFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vTetVertex._0, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos);
-                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
-                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
+                var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
+                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[0] = (vTetVertex._0 - vP).magnitude;
                 fWeightsWithDepth[0] = fWeights[0] * fOccluded;
@@ -291,8 +291,8 @@ public class InfProbeFinder : MonoBehaviour
                 var fLineDepth = new float();
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vTetVertex._1, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos);
-                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
-                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
+                var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
+                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[1] = (vTetVertex._1 - vP).magnitude;
                 fWeightsWithDepth[1] = fWeights[1] * fOccluded;
@@ -305,8 +305,8 @@ public class InfProbeFinder : MonoBehaviour
                 var fLineDepth = new float();
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vTetVertex._2, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos);
-                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
-                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
+                var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
+                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[2] = (vTetVertex._2 - vP).magnitude;
                 fWeightsWithDepth[2] = fWeights[2] * fOccluded;
@@ -319,8 +319,8 @@ public class InfProbeFinder : MonoBehaviour
                 var fLineDepth = new float();
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos);
-                var fDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
-                var fOccluded = (fLineDepth > fDepth) ? 0.0f : 1.0f;
+                var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
+                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[3] = (vTetVertex._3 - vP).magnitude;
                 fWeightsWithDepth[3] = fWeights[3] * fOccluded;
