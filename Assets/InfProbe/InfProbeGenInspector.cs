@@ -363,10 +363,11 @@ public class InfProbeGenInspector : Editor
         renderLines.Add(new TGRenderLine(vOct.vectors[5], vOct.vectors[4]));
     }
 
-    private void _findAllProbeFindRenderers()
+    private void _collectObjects()
     {
         probeFinderList.Clear();
         probeFinderRendererList.Clear();
+        renderableMeshList.Clear();
 
         foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
         {
@@ -389,22 +390,7 @@ public class InfProbeGenInspector : Editor
 
                     probeFinderRendererList.Add(renderer);
                 }
-            }
-        }
-    }
-    private void _findAllRenderableMeshes()
-    {
-        renderableMeshList.Clear();
 
-        foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
-        {
-            if (!gObj.activeSelf)
-                continue;
-            if (gObj.hideFlags == HideFlags.HideInHierarchy)
-                continue;
-
-            if (!EditorUtility.IsPersistent(gObj.transform.root.gameObject) && !(gObj.hideFlags == HideFlags.NotEditable || gObj.hideFlags == HideFlags.HideAndDontSave))
-            {
                 foreach (var mesh in gObj.GetComponentsInChildren<MeshFilter>(false))
                 {
                     if ((mesh.GetComponents<MeshRenderer>().Length + mesh.GetComponentsInChildren<MeshRenderer>().Length) <= 0)
@@ -856,7 +842,7 @@ public class InfProbeGenInspector : Editor
             probeFinderRendererList[i].enabled = oldRendererVisible[i];
 
         foreach (var probeFinder in probeFinderList)
-            probeFinder.iLastProbe = 0;
+            probeFinder.InitProbeFinder();
     }
 
     private static bool _rayTriIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, ref float t)
@@ -989,9 +975,8 @@ public class InfProbeGenInspector : Editor
 
     private void _rebuildProbes()
     {
-        _findAllProbeFindRenderers();
+        _collectObjects();
         _generateTets();
-        _findAllRenderableMeshes();
         _fillDepthInfo();
     }
 

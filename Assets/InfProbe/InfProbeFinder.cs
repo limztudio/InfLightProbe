@@ -3,6 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
+[System.Serializable]
+public struct SHShaderColor
+{
+    public Vector4 vBand1R;
+    public Vector4 vBand1G;
+    public Vector4 vBand1B;
+    public Vector4 vBand2R;
+    public Vector4 vBand2G;
+    public Vector4 vBand2B;
+    public Vector3 vBand0RGB;
+};
+
+
 public class InfProbeFinder : MonoBehaviour
 {
     public GameObject objProbeGen;
@@ -11,7 +24,7 @@ public class InfProbeFinder : MonoBehaviour
     private Vector3 vOldPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 
     public int iLastProbe = 0;
-    public SHColor shColor;
+    public SHShaderColor shColor;
 
     private static int ToIndex(ref TetInt4 v, int i)
     {
@@ -66,27 +79,38 @@ public class InfProbeFinder : MonoBehaviour
         return v._14;
     }
 
-    private static Vector3 ProjectPointOntoFace(ref Vector3 v0, ref Vector3 v1, ref Vector3 v2, ref Vector3 vP, ref float fNormalLength)
+    private static Vector3 ProjectPointOntoFace(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP, ref float fNormalLength)
     {
+        var vOrigin = vP - v0;
         var vFaceNormal = Vector3.Cross((v1 - v0), (v2 - v0));
-        fNormalLength = vFaceNormal.magnitude;
-
-        if(fNormalLength > 0.0001f)
+        var fNormalLengthSq = vFaceNormal.sqrMagnitude;
+        if(fNormalLengthSq > 0.0001f)
+        {
+            fNormalLength = Mathf.Sqrt(fNormalLengthSq);
             vFaceNormal /= fNormalLength;
-        var fDist = Vector3.Dot(v0, vFaceNormal);
+        }
+
+        var fDist = Vector3.Dot(vOrigin, vFaceNormal);
 
         var vProjected = vP - (vFaceNormal * fDist);
+
         return vProjected;
     }
-    private static Vector2 MakeBaryCoord(ref Vector3 v0, ref Vector3 v1, ref Vector3 v2, ref Vector3 vP, float fWholeAreaRatioInv)
+    private static Vector2 MakeBaryCoord(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP, float fWholeAreaRatioInv)
     {
         var v0P = v0 - vP;
         var v1P = v1 - vP;
         var v2P = v2 - vP;
 
-        var fW2 = Vector3.Cross(v0P, v1P).magnitude * fWholeAreaRatioInv;
-        var fW1 = Vector3.Cross(v0P, v2P).magnitude * fWholeAreaRatioInv;
-        
+        var vA2 = Vector3.Cross(v0P, v1P);
+        var vA1 = Vector3.Cross(v0P, v2P);
+
+        var fW2 = vA2.magnitude;
+        var fW1 = vA1.magnitude;
+
+        fW2 *= fWholeAreaRatioInv;
+        fW1 *= fWholeAreaRatioInv;
+
         // UV0 is (0, 0), so it is okay to be skipped
         var vUV1 = new Vector2(1.0f, 0.0f);
         var vUV2 = new Vector2(0.0f, 1.0f);
@@ -94,7 +118,7 @@ public class InfProbeFinder : MonoBehaviour
         var vUVP = (vUV1 * fW1) + (vUV2 * fW2);
         return vUVP;
     }
-    private static float GetFaceDepthOnPoint(ref TetDepth vDepth, ref Vector2 vBary)
+    private static float GetFaceDepthOnPoint(ref TetDepth vDepth, Vector2 vBary)
     {
         var fSampleY = Mathf.Floor(vBary.y * 4.0f);
         var fSampleX = Mathf.Floor(vBary.x * 4.0f);
@@ -158,24 +182,24 @@ public class InfProbeFinder : MonoBehaviour
 
         var vCurPos = transform.position;
 
-        float[] fWeight = new float[4];
+        float[] fTetWeights = new float[4];
         {
             var vP = vCurPos - vTetBaryMatrix._3;
 
-            fWeight[0] = Vector3.Dot(vP, vTetBaryMatrix._0);
-            fWeight[1] = Vector3.Dot(vP, vTetBaryMatrix._1);
-            fWeight[2] = Vector3.Dot(vP, vTetBaryMatrix._2);
-            fWeight[3] = 1.0f - fWeight[0] - fWeight[1] - fWeight[2];
+            fTetWeights[0] = Vector3.Dot(vP, vTetBaryMatrix._0);
+            fTetWeights[1] = Vector3.Dot(vP, vTetBaryMatrix._1);
+            fTetWeights[2] = Vector3.Dot(vP, vTetBaryMatrix._2);
+            fTetWeights[3] = 1.0f - fTetWeights[0] - fTetWeights[1] - fTetWeights[2];
         }
 
         int iMin = 0;
-        float fMin = fWeight[0];
+        float fMin = fTetWeights[0];
         for (int i = 1; i < 4; ++i)
         {
-            if (fMin > fWeight[i])
+            if (fMin > fTetWeights[i])
             {
                 iMin = i;
-                fMin = fWeight[i];
+                fMin = fTetWeights[i];
             }
         }
 
@@ -202,85 +226,203 @@ public class InfProbeFinder : MonoBehaviour
             ref var vTetVertex = ref probeGen.vTetVertices[iLastProbe];
             ref var vTetDepthMap = ref probeGen.vTetDepthMap[iLastProbe];
 
+            var fWeights = new float[4];
+            var fWeightsWithDepth = new float[4];
+
+            var fTotalWeight = 0.0f;
+            var fTotalWeightWithDepth = 0.0f;
+
             { // 0 -> 1, 2, 3
-                ref var v0 = ref vTetVertex._1;
-                ref var v1 = ref vTetVertex._2;
-                ref var v2 = ref vTetVertex._3;
-
                 var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
+                var vP = ProjectPointOntoFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._0, ref vBary) < 0.9998f ? 0.0f : 1.0f;
+                var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, fWholeAreaRatioInv);
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._0, vBary) < 0.9998f ? 0.0f : 1.0f;
 
+                fWeights[0] = (vTetVertex._0 - vP).magnitude;
+                fWeightsWithDepth[0] = fWeights[0] * fDepth;
+
+                fTotalWeight += fWeights[0];
+                fTotalWeightWithDepth += fWeightsWithDepth[0];
             }
 
             { // 1 -> 0, 2, 3
-                ref var v0 = ref vTetVertex._0;
-                ref var v1 = ref vTetVertex._2;
-                ref var v2 = ref vTetVertex._3;
-
                 var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
+                var vP = ProjectPointOntoFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._1, ref vBary) < 0.9998f ? 0.0f : 1.0f;
+                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos, fWholeAreaRatioInv);
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._1, vBary) < 0.9998f ? 0.0f : 1.0f;
+
+                fWeights[1] = (vTetVertex._1 - vP).magnitude;
+                fWeightsWithDepth[1] = fWeights[1] * fDepth;
+
+                fTotalWeight += fWeights[1];
+                fTotalWeightWithDepth += fWeightsWithDepth[1];
             }
 
             { // 2 -> 0, 1, 3
-                ref var v0 = ref vTetVertex._0;
-                ref var v1 = ref vTetVertex._1;
-                ref var v2 = ref vTetVertex._3;
-
                 var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
+                var vP = ProjectPointOntoFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._2, ref vBary) < 0.9998f ? 0.0f : 1.0f;
+                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos, fWholeAreaRatioInv);
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._2, vBary) < 0.9998f ? 0.0f : 1.0f;
+
+                fWeights[2] = (vTetVertex._2 - vP).magnitude;
+                fWeightsWithDepth[2] = fWeights[2] * fDepth;
+
+                fTotalWeight += fWeights[2];
+                fTotalWeightWithDepth += fWeightsWithDepth[2];
             }
 
             { // 3 -> 0, 1, 2
-                ref var v0 = ref vTetVertex._0;
-                ref var v1 = ref vTetVertex._1;
-                ref var v2 = ref vTetVertex._2;
-
                 var fWholeAreaRatio = new float();
-                var vP = ProjectPointOntoFace(ref v0, ref v1, ref v2, ref vCurPos, ref fWholeAreaRatio);
+                var vP = ProjectPointOntoFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos, ref fWholeAreaRatio);
                 var fWholeAreaRatioInv = 1.0f / fWholeAreaRatio;
-                var vBary = MakeBaryCoord(ref v0, ref v1, ref v2, ref vCurPos, fWholeAreaRatioInv);
-                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._3, ref vBary) < 0.9998f ? 0.0f : 1.0f;
+                var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos, fWholeAreaRatioInv);
+                var fDepth = GetFaceDepthOnPoint(ref vTetDepthMap._3, vBary) < 0.9998f ? 0.0f : 1.0f;
+
+                fWeights[3] = (vTetVertex._3 - vP).magnitude;
+                fWeightsWithDepth[3] = fWeights[3] * fDepth;
+
+                fTotalWeight += fWeights[3];
+                fTotalWeightWithDepth += fWeightsWithDepth[3];
             }
 
-            shColor = new SHColor();
+            var shTmpColorAcc = new SHColor();
+            shTmpColorAcc.SH = new Vector3[] {
+                Vector3.zero, Vector3.zero, Vector3.zero,
+                Vector3.zero, Vector3.zero, Vector3.zero,
+                Vector3.zero, Vector3.zero, Vector3.zero
+            };
 
+            var shTmpColor = new SHColor();
+            shTmpColor.SH = new Vector3[9];
 
-            //var shTmpColor = new SHColor();
+            float fSHWeight;
 
-            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._0, out shTmpColor))
-            //{
-            //    for (int i = 0; i < 9; ++i)
-            //        shColor.SH[i] = shTmpColor.SH[i] * fWeight[0];
-            //}
-            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._1, out shTmpColor))
-            //{
-            //    for (int i = 0; i < 9; ++i)
-            //        shColor.SH[i] += shTmpColor.SH[i] * fWeight[1];
-            //}
-            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._2, out shTmpColor))
-            //{
-            //    for (int i = 0; i < 9; ++i)
-            //        shColor.SH[i] += shTmpColor.SH[i] * fWeight[2];
-            //}
-            //if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._3, out shTmpColor))
-            //{
-            //    for (int i = 0; i < 9; ++i)
-            //        shColor.SH[i] += shTmpColor.SH[i] * fWeight[3];
-            //}
+            if (fTotalWeightWithDepth > 0.0f)
+            {
+                fTotalWeightWithDepth = 1.0f / fTotalWeightWithDepth;
+
+                fSHWeight = 1.0f - (fWeightsWithDepth[0] * fTotalWeightWithDepth);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._0, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+
+                fSHWeight = 1.0f - (fWeightsWithDepth[1] * fTotalWeightWithDepth);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._1, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+
+                fSHWeight = 1.0f - (fWeightsWithDepth[2] * fTotalWeightWithDepth);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._2, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+
+                fSHWeight = 1.0f - (fWeightsWithDepth[3] * fTotalWeightWithDepth);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._3, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+            }
+            else
+            {
+                fTotalWeight = 1.0f / fTotalWeight;
+
+                fSHWeight = 1.0f - (fWeights[0] * fTotalWeight);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._0, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+
+                fSHWeight = 1.0f - (fWeights[1] * fTotalWeight);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._1, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+
+                fSHWeight = 1.0f - (fWeights[2] * fTotalWeight);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._2, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+
+                fSHWeight = 1.0f - (fWeights[3] * fTotalWeight);
+                if (fSHWeight > 0.0001f)
+                {
+                    if (probeGen.vSHColors.TryGetValue(probeGen.vTetVertices[iLastProbe]._3, out shTmpColor))
+                    {
+                        for (int i = 0; i < 9; ++i)
+                        {
+                            shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += shTmpColor.SH[i];
+                        }
+                    }
+                }
+            }
+
+            shColor = new SHShaderColor();
         }
     }
     public void InitProbeFinder()
     {
         probeGen = objProbeGen.GetComponent<InfProbeGen>();
+        iLastProbe = 0;
+        vOldPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+
+        UpdateProbe();
     }
     public void UpdateProbe()
     {

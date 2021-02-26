@@ -46,11 +46,16 @@ public class InfProbeFinderInspector : Editor
             {
                 var vSize = new Vector3(0.2f, 0.2f, 0.2f);
 
-                Handles.color = Color.magenta;
-
+                Handles.color = Color.red;
                 Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._0, vSize);
+
+                Handles.color = Color.green;
                 Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._1, vSize);
+
+                Handles.color = Color.blue;
                 Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._2, vSize);
+
+                Handles.color = Color.magenta;
                 Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._3, vSize);
             }
         }

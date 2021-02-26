@@ -78513,9 +78513,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objProbeGen: {fileID: 1259639924}
   probeGen: {fileID: 1259639925}
-  iLastProbe: 53
+  iLastProbe: 38
   shColor:
-    SH: []
+    vBand1R: {x: 0, y: 0, z: 0, w: 0}
+    vBand1G: {x: 0, y: 0, z: 0, w: 0}
+    vBand1B: {x: 0, y: 0, z: 0, w: 0}
+    vBand2R: {x: 0, y: 0, z: 0, w: 0}
+    vBand2G: {x: 0, y: 0, z: 0, w: 0}
+    vBand2B: {x: 0, y: 0, z: 0, w: 0}
+    vBand0RGB: {x: 0, y: 0, z: 0}
 --- !u!135 &2014232774
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -78586,7 +78592,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2014232772}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.05, y: 4.15, z: -16.86}
+  m_LocalPosition: {x: -1.05, y: 4.15, z: -15.37}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
