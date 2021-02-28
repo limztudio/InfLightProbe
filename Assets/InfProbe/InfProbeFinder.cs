@@ -274,7 +274,7 @@ public class InfProbeFinder : MonoBehaviour
             var fTotalWeightWithDepth = 0.0f;
 
             { // 0 -> 1, 2, 3
-                var fLineDepth = new float();
+                float fLineDepth;
                 var vP = IntersectPointWithFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vTetVertex._0, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
@@ -288,7 +288,7 @@ public class InfProbeFinder : MonoBehaviour
             }
 
             { // 1 -> 0, 2, 3
-                var fLineDepth = new float();
+                float fLineDepth;
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vTetVertex._1, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
@@ -302,7 +302,7 @@ public class InfProbeFinder : MonoBehaviour
             }
 
             { // 2 -> 0, 1, 3
-                var fLineDepth = new float();
+                float fLineDepth;
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vTetVertex._2, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
@@ -316,7 +316,7 @@ public class InfProbeFinder : MonoBehaviour
             }
 
             { // 3 -> 0, 1, 2
-                var fLineDepth = new float();
+                float fLineDepth;
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
