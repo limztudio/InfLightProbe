@@ -763,8 +763,13 @@ public class InfProbeGenInspector : Editor
             TGGetTetIntraIndices(uRawSubIntraIndices);
             TGUint4[] vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
 
-            probeGen.vSHColors = new Dictionary<Vector3, SHColor>();
-            probeGen.vSHColors.Clear();
+            probeGen.vTetSHIndices = new TetInt4[iTetCount];
+
+            var iTetSHIndex = 0;
+            var vTmpSHIndices = new Dictionary<Vector3, int>();
+
+            var vTmpSHColors = new List<SHColor>();
+
             for (i = 0; i < iTetCount; ++i)
             {
                 TetFloat43 vNewVert = new TetFloat43();
@@ -785,7 +790,16 @@ public class InfProbeGenInspector : Editor
                         vNewVert._0,
                         ref shColor
                         );
-                    probeGen.vSHColors[vNewVert._0] = shColor;
+
+                    if (!vTmpSHIndices.ContainsKey(vNewVert._0))
+                    {
+                        probeGen.vTetSHIndices[i]._0 = iTetSHIndex;
+                        vTmpSHIndices[vNewVert._0] = iTetSHIndex;
+                        vTmpSHColors.Add(shColor);
+                        ++iTetSHIndex;
+                    }
+                    else
+                        probeGen.vTetSHIndices[i]._0 = vTmpSHIndices[vNewVert._0];
                 }
                 {
                     var shColor = new SHColor();
@@ -796,7 +810,16 @@ public class InfProbeGenInspector : Editor
                         vNewVert._1,
                         ref shColor
                         );
-                    probeGen.vSHColors[vNewVert._1] = shColor;
+
+                    if (!vTmpSHIndices.ContainsKey(vNewVert._1))
+                    {
+                        probeGen.vTetSHIndices[i]._1 = iTetSHIndex;
+                        vTmpSHIndices[vNewVert._1] = iTetSHIndex;
+                        vTmpSHColors.Add(shColor);
+                        ++iTetSHIndex;
+                    }
+                    else
+                        probeGen.vTetSHIndices[i]._1 = vTmpSHIndices[vNewVert._1];
                 }
                 {
                     var shColor = new SHColor();
@@ -807,7 +830,16 @@ public class InfProbeGenInspector : Editor
                         vNewVert._2,
                         ref shColor
                         );
-                    probeGen.vSHColors[vNewVert._2] = shColor;
+
+                    if (!vTmpSHIndices.ContainsKey(vNewVert._2))
+                    {
+                        probeGen.vTetSHIndices[i]._2 = iTetSHIndex;
+                        vTmpSHIndices[vNewVert._2] = iTetSHIndex;
+                        vTmpSHColors.Add(shColor);
+                        ++iTetSHIndex;
+                    }
+                    else
+                        probeGen.vTetSHIndices[i]._2 = vTmpSHIndices[vNewVert._2];
                 }
                 {
                     var shColor = new SHColor();
@@ -818,9 +850,22 @@ public class InfProbeGenInspector : Editor
                         vNewVert._3,
                         ref shColor
                         );
-                    probeGen.vSHColors[vNewVert._3] = shColor;
+
+                    if (!vTmpSHIndices.ContainsKey(vNewVert._3))
+                    {
+                        probeGen.vTetSHIndices[i]._3 = iTetSHIndex;
+                        vTmpSHIndices[vNewVert._3] = iTetSHIndex;
+                        vTmpSHColors.Add(shColor);
+                        ++iTetSHIndex;
+                    }
+                    else
+                        probeGen.vTetSHIndices[i]._3 = vTmpSHIndices[vNewVert._3];
                 }
             }
+
+            probeGen.vSHColors = new SHColor[vTmpSHColors.Count];
+            for (i = 0; i < vTmpSHColors.Count; ++i)
+                probeGen.vSHColors[i] = vTmpSHColors[i];
 
             uint[] uRawSubAdjIndices = new uint[iTetCount * 4];
             TGGetTetAjacentIndices(uRawSubAdjIndices);

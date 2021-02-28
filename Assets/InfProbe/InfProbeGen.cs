@@ -48,8 +48,8 @@ public class InfProbeGen : MonoBehaviour
     public TetInt4[] vTetAdjIndices;
     public TetFloat43[] vTetBaryMatrices;
     public TetDepthMap[] vTetDepthMap;
-
-    public Dictionary<Vector3, SHColor> vSHColors;
+    public TetInt4[] vTetSHIndices;
+    public SHColor[] vSHColors;
 
     private void Awake()
     {
