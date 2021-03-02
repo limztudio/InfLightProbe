@@ -19,6 +19,11 @@ public struct TetInt4
     public int _0, _1, _2, _3;
 };
 [System.Serializable]
+public struct TetBool4
+{
+    public bool _0, _1, _2, _3;
+};
+[System.Serializable]
 public struct TetDepth
 {
     public byte _00, _01, _02, _03, _04;

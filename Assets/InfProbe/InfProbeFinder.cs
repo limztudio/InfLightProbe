@@ -15,12 +15,6 @@ public struct SHShaderColor
     public Vector3 vBand0Base0RGB;
 };
 
-[System.Serializable]
-public struct ProbeVisibility
-{
-    public bool _0, _1, _2, _3;
-};
-
 
 public class InfProbeFinder : MonoBehaviour
 {
@@ -31,7 +25,8 @@ public class InfProbeFinder : MonoBehaviour
 
     public int iLastProbe = 0;
     public SHShaderColor shColor;
-    public ProbeVisibility vProbeVisibility;
+    public TetInt4 vProbeSelected;
+    public TetBool4 vProbeVisibility;
 
     private static int ToIndex(ref TetInt4 v, int i)
     {
@@ -285,7 +280,7 @@ public class InfProbeFinder : MonoBehaviour
             var fTotalWeight = 0.0f;
             var fTotalWeightWithDepth = 0.0f;
 
-            vProbeVisibility = new ProbeVisibility();
+            vProbeVisibility = new TetBool4();
 
             { // 0 -> 1, 2, 3
                 float fLineDepth;
@@ -387,97 +382,81 @@ public class InfProbeFinder : MonoBehaviour
             {
                 fTotalWeightWithDepth = 1.0f / fTotalWeightWithDepth;
 
-                fSHWeight = 1.0f - (fWeightsWithDepth[0] * fTotalWeightWithDepth);
-                if (fSHWeight > 0.0001f)
+                if (fWeightsWithDepth[0] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._0];
+                    fSHWeight = 1.0f - (fWeightsWithDepth[0] * fTotalWeightWithDepth);
+
                     for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._0].SH[i] * fSHWeight;
                 }
 
-                fSHWeight = 1.0f - (fWeightsWithDepth[1] * fTotalWeightWithDepth);
-                if (fSHWeight > 0.0001f)
+                if (fWeightsWithDepth[1] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._1];
+                    fSHWeight = 1.0f - (fWeightsWithDepth[1] * fTotalWeightWithDepth);
+
                     for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._1].SH[i] * fSHWeight;
                 }
 
-                fSHWeight = 1.0f - (fWeightsWithDepth[2] * fTotalWeightWithDepth);
-                if (fSHWeight > 0.0001f)
+                if (fWeightsWithDepth[2] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._2];
+                    fSHWeight = 1.0f - (fWeightsWithDepth[2] * fTotalWeightWithDepth);
+
                     for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._2].SH[i] * fSHWeight;
                 }
 
-                fSHWeight = 1.0f - (fWeightsWithDepth[3] * fTotalWeightWithDepth);
-                if (fSHWeight > 0.0001f)
+                if (fWeightsWithDepth[3] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._3];
+                    fSHWeight = 1.0f - (fWeightsWithDepth[3] * fTotalWeightWithDepth);
+
                     for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._3].SH[i] * fSHWeight;
                 }
             }
             else
             {
                 fTotalWeight = 1.0f / fTotalWeight;
 
-                fSHWeight = 1.0f - (fWeights[0] * fTotalWeight);
-                if (fSHWeight > 0.0001f)
+                if (fWeights[0] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._0];
+                    fSHWeight = 1.0f - (fWeights[0] * fTotalWeight);
+
                     for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._0].SH[i] * fSHWeight;
                 }
 
-                fSHWeight = 1.0f - (fWeights[1] * fTotalWeight);
-                if (fSHWeight > 0.0001f)
+                if (fWeights[1] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._1];
-                    for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                    fSHWeight = 1.0f - (fWeights[1] * fTotalWeight);
+
+                    for (int i = 0; i < 9; ++i) 
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._1].SH[i] * fSHWeight;
                 }
 
-                fSHWeight = 1.0f - (fWeights[2] * fTotalWeight);
-                if (fSHWeight > 0.0001f)
+                if (fWeights[2] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._2];
-                    for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                    fSHWeight = 1.0f - (fWeights[2] * fTotalWeight);
+
+                    for (int i = 0; i < 9; ++i) 
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._2].SH[i] * fSHWeight;
                 }
 
-                fSHWeight = 1.0f - (fWeights[3] * fTotalWeight);
-                if (fSHWeight > 0.0001f)
+                if (fWeights[3] > 0.0001f)
                 {
-                    ref var shTmpColor = ref probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._3];
-                    for (int i = 0; i < 9; ++i)
-                    {
-                        shTmpColor.SH[i] = shTmpColor.SH[i] * fSHWeight;
-                        shTmpColorAcc.SH[i] += shTmpColor.SH[i];
-                    }
+                    fSHWeight = 1.0f - (fWeights[3] * fTotalWeight);
+
+                    for (int i = 0; i < 9; ++i) 
+                        shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetSHIndices[iLastProbe]._3].SH[i] * fSHWeight; ;
                 }
+            }
+
+            vProbeSelected = new TetInt4();
+            {
+                vProbeSelected._0 = probeGen.vTetSHIndices[iLastProbe]._0;
+                vProbeSelected._1 = probeGen.vTetSHIndices[iLastProbe]._1;
+                vProbeSelected._2 = probeGen.vTetSHIndices[iLastProbe]._2;
+                vProbeSelected._3 = probeGen.vTetSHIndices[iLastProbe]._3;
             }
 
             shColor = new SHShaderColor();
