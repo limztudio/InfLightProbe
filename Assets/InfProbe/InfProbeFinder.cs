@@ -6,13 +6,13 @@ using UnityEngine;
 [System.Serializable]
 public struct SHShaderColor
 {
-    public Vector4 vBand1R;
-    public Vector4 vBand1G;
-    public Vector4 vBand1B;
-    public Vector4 vBand2R;
-    public Vector4 vBand2G;
-    public Vector4 vBand2B;
-    public Vector3 vBand0RGB;
+    public Vector4 vBand1Base0RGB_Band2Base0R;
+    public Vector4 vBand1Base1RGB_Band2Base0G;
+    public Vector4 vBand1Base2RGB_Band2Base0B;
+    public Vector4 vBand2Base1RGB_Band2Base4R;
+    public Vector4 vBand2Base2RGB_Band2Base4G;
+    public Vector4 vBand2Base3RGB_Band2Base4B;
+    public Vector3 vBand0Base0RGB;
 };
 
 
@@ -436,6 +436,45 @@ public class InfProbeFinder : MonoBehaviour
             }
 
             shColor = new SHShaderColor();
+            {
+                shColor.vBand0Base0RGB = shTmpColorAcc.SH[0];
+                shColor.vBand1Base0RGB_Band2Base0R = new Vector4(
+                    shTmpColorAcc.SH[1].x,
+                    shTmpColorAcc.SH[1].y,
+                    shTmpColorAcc.SH[1].z,
+                    shTmpColorAcc.SH[4].x
+                    );
+                shColor.vBand1Base1RGB_Band2Base0G = new Vector4(
+                    shTmpColorAcc.SH[2].x,
+                    shTmpColorAcc.SH[2].y,
+                    shTmpColorAcc.SH[2].z,
+                    shTmpColorAcc.SH[4].y
+                    );
+                shColor.vBand1Base2RGB_Band2Base0B = new Vector4(
+                    shTmpColorAcc.SH[3].x,
+                    shTmpColorAcc.SH[3].y,
+                    shTmpColorAcc.SH[3].z,
+                    shTmpColorAcc.SH[4].z
+                    );
+                shColor.vBand2Base1RGB_Band2Base4R = new Vector4(
+                    shTmpColorAcc.SH[5].x,
+                    shTmpColorAcc.SH[5].y,
+                    shTmpColorAcc.SH[5].z,
+                    shTmpColorAcc.SH[8].x
+                    );
+                shColor.vBand2Base2RGB_Band2Base4G = new Vector4(
+                    shTmpColorAcc.SH[6].x,
+                    shTmpColorAcc.SH[6].y,
+                    shTmpColorAcc.SH[6].z,
+                    shTmpColorAcc.SH[8].y
+                    );
+                shColor.vBand2Base3RGB_Band2Base4B = new Vector4(
+                    shTmpColorAcc.SH[7].x,
+                    shTmpColorAcc.SH[7].y,
+                    shTmpColorAcc.SH[7].z,
+                    shTmpColorAcc.SH[8].z
+                    );
+            }
         }
     }
     public void InitProbeFinder()
