@@ -67,6 +67,8 @@ inline half3 getIrradiance(float3 vNormal){
     float3 vReturn = float3(fBase0Acc, fBase1Acc, fBase2Acc);
     vReturn *= 0.31830988f; // 1.f / PI
 
+    //vReturn = pow(vReturn / (float3(1.0f, 1.0f, 1.0f) + vReturn), float3(1.0f / 1.8f, 1.0f / 1.8f, 1.0f / 1.8f));
+
 #ifdef UNITY_COLORSPACE_GAMMA
     vReturn = LinearToGammaSpace(vReturn);
 #endif
