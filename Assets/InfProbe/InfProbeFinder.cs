@@ -6,12 +6,12 @@ using UnityEngine;
 [System.Serializable]
 public struct SHShaderColor
 {
-    public Vector4 vBand1Base0RGB_Band2Base0R;
-    public Vector4 vBand1Base1RGB_Band2Base0G;
-    public Vector4 vBand1Base2RGB_Band2Base0B;
-    public Vector4 vBand2Base1RGB_Band2Base4R;
-    public Vector4 vBand2Base2RGB_Band2Base4G;
-    public Vector4 vBand2Base3RGB_Band2Base4B;
+    public Vector4 vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R;
+    public Vector4 vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G;
+    public Vector4 vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B;
+    public Vector4 vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R;
+    public Vector4 vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G;
+    public Vector4 vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B;
     public Vector3 vBand0Base0RGB;
 };
 
@@ -219,13 +219,7 @@ public class InfProbeFinder : MonoBehaviour
 
     private void OnPreRender()
     {
-        Shader.SetGlobalVector("PRB_BAND1BASE0RGB_BAND2BASE0R", shColor.vBand1Base0RGB_Band2Base0R);
-        Shader.SetGlobalVector("PRB_BAND1BASE1RGB_BAND2BASE0G", shColor.vBand1Base1RGB_Band2Base0G);
-        Shader.SetGlobalVector("PRB_BAND1BASE2RGB_BAND2BASE0B", shColor.vBand1Base2RGB_Band2Base0B);
-        Shader.SetGlobalVector("PRB_BAND2BASE1RGB_BAND2BASE4R", shColor.vBand2Base1RGB_Band2Base4R);
-        Shader.SetGlobalVector("PRB_BAND2BASE2RGB_BAND2BASE4G", shColor.vBand2Base2RGB_Band2Base4G);
-        Shader.SetGlobalVector("PRB_BAND2BASE3RGB_BAND2BASE4B", shColor.vBand2Base3RGB_Band2Base4B);
-        Shader.SetGlobalVector("PRB_BAND0BASE0RGB", shColor.vBand0Base0RGB);
+        UpdateProbeShader();
     }
 
     private void FindClosestProbe()
@@ -289,10 +283,10 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vTetVertex._0, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
-                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
+                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[0] = (vTetVertex._0 - vP).magnitude;
-                fWeightsWithDepth[0] = fWeights[0] * fOccluded;
+                fWeightsWithDepth[0] = fWeights[0] * fVisible;
 
                 fTotalWeight += fWeights[0];
                 fTotalWeightWithDepth += fWeightsWithDepth[0];
@@ -303,10 +297,10 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vTetVertex._1, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
-                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
+                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[1] = (vTetVertex._1 - vP).magnitude;
-                fWeightsWithDepth[1] = fWeights[1] * fOccluded;
+                fWeightsWithDepth[1] = fWeights[1] * fVisible;
 
                 fTotalWeight += fWeights[1];
                 fTotalWeightWithDepth += fWeightsWithDepth[1];
@@ -317,10 +311,10 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vTetVertex._2, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
-                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
+                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[2] = (vTetVertex._2 - vP).magnitude;
-                fWeightsWithDepth[2] = fWeights[2] * fOccluded;
+                fWeightsWithDepth[2] = fWeights[2] * fVisible;
 
                 fTotalWeight += fWeights[2];
                 fTotalWeightWithDepth += fWeightsWithDepth[2];
@@ -331,10 +325,10 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
-                var fOccluded = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
+                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[3] = (vTetVertex._3 - vP).magnitude;
-                fWeightsWithDepth[3] = fWeights[3] * fOccluded;
+                fWeightsWithDepth[3] = fWeights[3] * fVisible;
 
                 fTotalWeight += fWeights[3];
                 fTotalWeightWithDepth += fWeightsWithDepth[3];
@@ -449,39 +443,39 @@ public class InfProbeFinder : MonoBehaviour
             shColor = new SHShaderColor();
             {
                 shColor.vBand0Base0RGB = shTmpColorAcc.SH[0];
-                shColor.vBand1Base0RGB_Band2Base0R = new Vector4(
+                shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R = new Vector4(
                     shTmpColorAcc.SH[1].x,
-                    shTmpColorAcc.SH[1].y,
-                    shTmpColorAcc.SH[1].z,
+                    shTmpColorAcc.SH[2].x,
+                    shTmpColorAcc.SH[3].x,
                     shTmpColorAcc.SH[4].x
                     );
-                shColor.vBand1Base1RGB_Band2Base0G = new Vector4(
-                    shTmpColorAcc.SH[2].x,
+                shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G = new Vector4(
+                    shTmpColorAcc.SH[1].y,
                     shTmpColorAcc.SH[2].y,
-                    shTmpColorAcc.SH[2].z,
+                    shTmpColorAcc.SH[3].y,
                     shTmpColorAcc.SH[4].y
                     );
-                shColor.vBand1Base2RGB_Band2Base0B = new Vector4(
-                    shTmpColorAcc.SH[3].x,
-                    shTmpColorAcc.SH[3].y,
+                shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B = new Vector4(
+                    shTmpColorAcc.SH[1].z,
+                    shTmpColorAcc.SH[2].z,
                     shTmpColorAcc.SH[3].z,
                     shTmpColorAcc.SH[4].z
                     );
-                shColor.vBand2Base1RGB_Band2Base4R = new Vector4(
+                shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R = new Vector4(
                     shTmpColorAcc.SH[5].x,
-                    shTmpColorAcc.SH[5].y,
-                    shTmpColorAcc.SH[5].z,
+                    shTmpColorAcc.SH[6].x,
+                    shTmpColorAcc.SH[7].x,
                     shTmpColorAcc.SH[8].x
                     );
-                shColor.vBand2Base2RGB_Band2Base4G = new Vector4(
-                    shTmpColorAcc.SH[6].x,
+                shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G = new Vector4(
+                    shTmpColorAcc.SH[5].y,
                     shTmpColorAcc.SH[6].y,
-                    shTmpColorAcc.SH[6].z,
+                    shTmpColorAcc.SH[7].y,
                     shTmpColorAcc.SH[8].y
                     );
-                shColor.vBand2Base3RGB_Band2Base4B = new Vector4(
-                    shTmpColorAcc.SH[7].x,
-                    shTmpColorAcc.SH[7].y,
+                shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B = new Vector4(
+                    shTmpColorAcc.SH[5].z,
+                    shTmpColorAcc.SH[6].z,
                     shTmpColorAcc.SH[7].z,
                     shTmpColorAcc.SH[8].z
                     );
@@ -507,13 +501,19 @@ public class InfProbeFinder : MonoBehaviour
         }
 
         { // test
-            Shader.SetGlobalVector("PRB_BAND1BASE0RGB_BAND2BASE0R", shColor.vBand1Base0RGB_Band2Base0R);
-            Shader.SetGlobalVector("PRB_BAND1BASE1RGB_BAND2BASE0G", shColor.vBand1Base1RGB_Band2Base0G);
-            Shader.SetGlobalVector("PRB_BAND1BASE2RGB_BAND2BASE0B", shColor.vBand1Base2RGB_Band2Base0B);
-            Shader.SetGlobalVector("PRB_BAND2BASE1RGB_BAND2BASE4R", shColor.vBand2Base1RGB_Band2Base4R);
-            Shader.SetGlobalVector("PRB_BAND2BASE2RGB_BAND2BASE4G", shColor.vBand2Base2RGB_Band2Base4G);
-            Shader.SetGlobalVector("PRB_BAND2BASE3RGB_BAND2BASE4B", shColor.vBand2Base3RGB_Band2Base4B);
-            Shader.SetGlobalVector("PRB_BAND0BASE0RGB", shColor.vBand0Base0RGB);
+            UpdateProbeShader();
         }
+    }
+    public void UpdateProbeShader()
+    {
+        Shader.SetGlobalVector("PRB_N1E0R_N1E1R_N1E2R_N2E0R", shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R);
+        Shader.SetGlobalVector("PRB_N1E0G_N1E1G_N1E2G_N2E0G", shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G);
+        Shader.SetGlobalVector("PRB_N1E0B_N1E1B_N1E2B_N2E0B", shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B);
+        Shader.SetGlobalVector("PRB_N2E1R_N2E2R_N2E3R_N2E4R", shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R);
+        Shader.SetGlobalVector("PRB_N2E1G_N2E2G_N2E3G_N2E4G", shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G);
+        Shader.SetGlobalVector("PRB_N2E1B_N2E2B_N2E3B_N2E4B", shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B);
+        Shader.SetGlobalVector("PRB_N0E0RGB", shColor.vBand0Base0RGB);
+
+        
     }
 }

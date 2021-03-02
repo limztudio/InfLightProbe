@@ -410,7 +410,7 @@ public class InfProbeGenInspector : Editor
         ref Cubemap tmpTexture,
         float fTotalWeight,
         Vector3 vPos,
-        ref SHColor vSH
+        out SHColor vSH
         )
     {
         if (cachedSHList.ContainsKey(vPos))
@@ -494,7 +494,7 @@ public class InfProbeGenInspector : Editor
                     ref tmpTexture,
                     fTotalWeight,
                     vSubTet.vectors[j],
-                    ref sHColors[j]
+                    out sHColors[j]
                     );
             }
             if (_compareSHs(ref sHColors, probeGen.fSHDiff))
@@ -532,7 +532,7 @@ public class InfProbeGenInspector : Editor
                     ref tmpTexture,
                     fTotalWeight,
                     vSubOct.vectors[j],
-                    ref sHColors[j]
+                    out sHColors[j]
                     );
             }
             if (_compareSHs(ref sHColors, probeGen.fSHDiff))
@@ -597,7 +597,7 @@ public class InfProbeGenInspector : Editor
                     ref tmpTexture,
                     fTotalWeight,
                     vSubTet.vectors[j],
-                    ref sHColors[j]
+                    out sHColors[j]
                     );
             }
             if (_compareSHs(ref sHColors, probeGen.fSHDiff))
@@ -635,7 +635,7 @@ public class InfProbeGenInspector : Editor
                     ref tmpTexture,
                     fTotalWeight,
                     vSubOct.vectors[j],
-                    ref sHColors[j]
+                    out sHColors[j]
                     );
             }
             if (_compareSHs(ref sHColors, probeGen.fSHDiff))
@@ -732,7 +732,7 @@ public class InfProbeGenInspector : Editor
                         ref tmpTexture,
                         fTotalWeight,
                         vRootTetVertices[i].vectors[j],
-                        ref shColors[j]
+                        out shColors[j]
                         );
                 }
 
@@ -788,7 +788,7 @@ public class InfProbeGenInspector : Editor
                         ref tmpTexture,
                         fTotalWeight,
                         vNewVert._0,
-                        ref shColor
+                        out shColor
                         );
 
                     if (!vTmpSHIndices.ContainsKey(vNewVert._0))
@@ -808,7 +808,7 @@ public class InfProbeGenInspector : Editor
                         ref tmpTexture,
                         fTotalWeight,
                         vNewVert._1,
-                        ref shColor
+                        out shColor
                         );
 
                     if (!vTmpSHIndices.ContainsKey(vNewVert._1))
@@ -828,7 +828,7 @@ public class InfProbeGenInspector : Editor
                         ref tmpTexture,
                         fTotalWeight,
                         vNewVert._2,
-                        ref shColor
+                        out shColor
                         );
 
                     if (!vTmpSHIndices.ContainsKey(vNewVert._2))
@@ -848,7 +848,7 @@ public class InfProbeGenInspector : Editor
                         ref tmpTexture,
                         fTotalWeight,
                         vNewVert._3,
-                        ref shColor
+                        out shColor
                         );
 
                     if (!vTmpSHIndices.ContainsKey(vNewVert._3))
