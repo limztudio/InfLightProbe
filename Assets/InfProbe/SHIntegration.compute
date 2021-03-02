@@ -35,11 +35,11 @@ void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
     sh[3] = 0.488603f * n.x * A1 * color;
 
     // Band 2
-    sh[4] = 1.092548f * n.x * n.y * A2 * color;
-    sh[5] = 1.092548f * n.y * n.z * A2 * color;
-    sh[6] = 0.315392f * (3.f * n.z * n.z - 1.f) * A2 * color;
-    sh[7] = 1.092548f * n.x * n.z * A2 * color;
-    sh[8] = 0.546274f * (n.x * n.x - n.y * n.y) * A2 * color;
+    sh[4] = 1.092548f * (n.x * n.y) * A2 * color;
+    sh[5] = 1.092548f * (n.y * n.z) * A2 * color;
+    sh[6] = 0.315392f * (3.f * (n.z * n.z) - 1.f) * A2 * color;
+    sh[7] = 1.092548f * (n.x * n.z) * A2 * color;
+    sh[8] = 0.546274f * ((n.x * n.x) - (n.y * n.y)) * A2 * color;
 }
 
 
