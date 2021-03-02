@@ -515,40 +515,40 @@ public class InfProbeFinder : MonoBehaviour
             {
                 shColor.vBand0Base0RGB = shTmpColorAcc.SH[0] * 0.282095f;
                 shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R = new Vector4(
-                    shTmpColorAcc.SH[1].x * 0.488603f,
-                    shTmpColorAcc.SH[2].x * 0.488603f,
-                    shTmpColorAcc.SH[3].x * 0.488603f,
-                    shTmpColorAcc.SH[4].x * 1.092548f
+                    shTmpColorAcc.SH[1].x,
+                    shTmpColorAcc.SH[2].x,
+                    shTmpColorAcc.SH[3].x,
+                    shTmpColorAcc.SH[4].x
                     );
                 shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G = new Vector4(
-                    shTmpColorAcc.SH[1].y * 0.488603f,
-                    shTmpColorAcc.SH[2].y * 0.488603f,
-                    shTmpColorAcc.SH[3].y * 0.488603f,
-                    shTmpColorAcc.SH[4].y * 1.092548f
+                    shTmpColorAcc.SH[1].y,
+                    shTmpColorAcc.SH[2].y,
+                    shTmpColorAcc.SH[3].y,
+                    shTmpColorAcc.SH[4].y
                     );
                 shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B = new Vector4(
-                    shTmpColorAcc.SH[1].z * 0.488603f,
-                    shTmpColorAcc.SH[2].z * 0.488603f,
-                    shTmpColorAcc.SH[3].z * 0.488603f,
-                    shTmpColorAcc.SH[4].z * 1.092548f
+                    shTmpColorAcc.SH[1].z,
+                    shTmpColorAcc.SH[2].z,
+                    shTmpColorAcc.SH[3].z,
+                    shTmpColorAcc.SH[4].z
                     );
                 shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R = new Vector4(
-                    shTmpColorAcc.SH[5].x * 1.092548f,
-                    shTmpColorAcc.SH[6].x * 0.315392f,
-                    shTmpColorAcc.SH[7].x * 1.092548f,
-                    shTmpColorAcc.SH[8].x * 0.546274f
+                    shTmpColorAcc.SH[5].x,
+                    shTmpColorAcc.SH[6].x,
+                    shTmpColorAcc.SH[7].x,
+                    shTmpColorAcc.SH[8].x
                     );
                 shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G = new Vector4(
-                    shTmpColorAcc.SH[5].y * 1.092548f,
-                    shTmpColorAcc.SH[6].y * 0.315392f,
-                    shTmpColorAcc.SH[7].y * 1.092548f,
-                    shTmpColorAcc.SH[8].y * 0.546274f
+                    shTmpColorAcc.SH[5].y,
+                    shTmpColorAcc.SH[6].y,
+                    shTmpColorAcc.SH[7].y,
+                    shTmpColorAcc.SH[8].y
                     );
                 shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B = new Vector4(
-                    shTmpColorAcc.SH[5].z * 1.092548f,
-                    shTmpColorAcc.SH[6].z * 0.315392f,
-                    shTmpColorAcc.SH[7].z * 1.092548f,
-                    shTmpColorAcc.SH[8].z * 0.546274f
+                    shTmpColorAcc.SH[5].z,
+                    shTmpColorAcc.SH[6].z,
+                    shTmpColorAcc.SH[7].z,
+                    shTmpColorAcc.SH[8].z
                     );
             }
         }
