@@ -217,6 +217,17 @@ public class InfProbeFinder : MonoBehaviour
         UpdateProbe();
     }
 
+    private void OnPreRender()
+    {
+        Shader.SetGlobalVector("PRB_BAND1BASE0RGB_BAND2BASE0R", shColor.vBand1Base0RGB_Band2Base0R);
+        Shader.SetGlobalVector("PRB_BAND1BASE1RGB_BAND2BASE0G", shColor.vBand1Base1RGB_Band2Base0G);
+        Shader.SetGlobalVector("PRB_BAND1BASE2RGB_BAND2BASE0B", shColor.vBand1Base2RGB_Band2Base0B);
+        Shader.SetGlobalVector("PRB_BAND2BASE1RGB_BAND2BASE4R", shColor.vBand2Base1RGB_Band2Base4R);
+        Shader.SetGlobalVector("PRB_BAND2BASE2RGB_BAND2BASE4G", shColor.vBand2Base2RGB_Band2Base4G);
+        Shader.SetGlobalVector("PRB_BAND2BASE3RGB_BAND2BASE4B", shColor.vBand2Base3RGB_Band2Base4B);
+        Shader.SetGlobalVector("PRB_BAND0BASE0RGB", shColor.vBand0Base0RGB);
+    }
+
     private void FindClosestProbe()
     {
         ref var vTetBaryMatrix = ref probeGen.vTetBaryMatrices[iLastProbe];
@@ -493,6 +504,16 @@ public class InfProbeFinder : MonoBehaviour
             FindClosestProbe();
 
             vOldPos = vCurPos;
+        }
+
+        { // test
+            Shader.SetGlobalVector("PRB_BAND1BASE0RGB_BAND2BASE0R", shColor.vBand1Base0RGB_Band2Base0R);
+            Shader.SetGlobalVector("PRB_BAND1BASE1RGB_BAND2BASE0G", shColor.vBand1Base1RGB_Band2Base0G);
+            Shader.SetGlobalVector("PRB_BAND1BASE2RGB_BAND2BASE0B", shColor.vBand1Base2RGB_Band2Base0B);
+            Shader.SetGlobalVector("PRB_BAND2BASE1RGB_BAND2BASE4R", shColor.vBand2Base1RGB_Band2Base4R);
+            Shader.SetGlobalVector("PRB_BAND2BASE2RGB_BAND2BASE4G", shColor.vBand2Base2RGB_Band2Base4G);
+            Shader.SetGlobalVector("PRB_BAND2BASE3RGB_BAND2BASE4B", shColor.vBand2Base3RGB_Band2Base4B);
+            Shader.SetGlobalVector("PRB_BAND0BASE0RGB", shColor.vBand0Base0RGB);
         }
     }
 }
