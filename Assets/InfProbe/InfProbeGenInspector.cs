@@ -674,15 +674,21 @@ public class InfProbeGenInspector : Editor
 
         float fTotalWeight = 0.0f;
         {
+            const float fB = -1.0f + 1.0f / (float)(PROBE_RENDER_SIZE);
+            const float fS = (2.0f * (1.0f - 1.0f / (float)(PROBE_RENDER_SIZE)) / ((float)(PROBE_RENDER_SIZE) - 1.0f));
+
             for (int y = 0; y < PROBE_RENDER_SIZE; ++y)
             {
+                float v = (float)(y) * fS + fB;
+                float v2 = v * v;
+
                 for (int x = 0; x < PROBE_RENDER_SIZE; ++x)
                 {
-                    float u = ((float)x / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
-                    float v = ((float)y / (float)PROBE_RENDER_SIZE) * 2.0f - 1.0f;
+                    float u = (float)(x) * fS + fB;
+                    float u2 = u * u;
 
-                    float temp = 1.0f + u * u + v * v;
-                    float weight = 4.0f / (Mathf.Sqrt(temp) * temp);
+                    float temp = 1.0f + u2 + v2;
+                    float weight = 4.0f / (temp * Mathf.Sqrt(temp));
 
                     fTotalWeight += weight;
                 }
