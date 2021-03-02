@@ -15,6 +15,12 @@ public struct SHShaderColor
     public Vector3 vBand0Base0RGB;
 };
 
+[System.Serializable]
+public struct ProbeVisibility
+{
+    public bool _0, _1, _2, _3;
+};
+
 
 public class InfProbeFinder : MonoBehaviour
 {
@@ -25,6 +31,7 @@ public class InfProbeFinder : MonoBehaviour
 
     public int iLastProbe = 0;
     public SHShaderColor shColor;
+    public ProbeVisibility vProbeVisibility;
 
     private static int ToIndex(ref TetInt4 v, int i)
     {
@@ -278,18 +285,27 @@ public class InfProbeFinder : MonoBehaviour
             var fTotalWeight = 0.0f;
             var fTotalWeightWithDepth = 0.0f;
 
+            vProbeVisibility = new ProbeVisibility();
+
             { // 0 -> 1, 2, 3
                 float fLineDepth;
                 var vP = IntersectPointWithFace(vTetVertex._1, vTetVertex._2, vTetVertex._3, vTetVertex._0, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
-                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[0] = (vTetVertex._0 - vP).magnitude;
-                fWeightsWithDepth[0] = fWeights[0] * fVisible;
-
                 fTotalWeight += fWeights[0];
-                fTotalWeightWithDepth += fWeightsWithDepth[0];
+
+                if (fLineDepth > fCachedDepth) {
+                    vProbeVisibility._0 = false;
+                    fWeightsWithDepth[0] = 0.0f;
+                }
+                else
+                {
+                    vProbeVisibility._0 = true;
+                    fWeightsWithDepth[0] = fWeights[0];
+                    fTotalWeightWithDepth += fWeightsWithDepth[0];
+                }
             }
 
             { // 1 -> 0, 2, 3
@@ -297,13 +313,21 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._2, vTetVertex._3, vTetVertex._1, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._2, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
-                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[1] = (vTetVertex._1 - vP).magnitude;
-                fWeightsWithDepth[1] = fWeights[1] * fVisible;
-
                 fTotalWeight += fWeights[1];
-                fTotalWeightWithDepth += fWeightsWithDepth[1];
+
+                if (fLineDepth > fCachedDepth)
+                {
+                    vProbeVisibility._1 = false;
+                    fWeightsWithDepth[1] = 0.0f;
+                }
+                else
+                {
+                    vProbeVisibility._1 = true;
+                    fWeightsWithDepth[1] = fWeights[1];
+                    fTotalWeightWithDepth += fWeightsWithDepth[1];
+                }
             }
 
             { // 2 -> 0, 1, 3
@@ -311,13 +335,21 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._3, vTetVertex._2, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._3, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
-                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[2] = (vTetVertex._2 - vP).magnitude;
-                fWeightsWithDepth[2] = fWeights[2] * fVisible;
-
                 fTotalWeight += fWeights[2];
-                fTotalWeightWithDepth += fWeightsWithDepth[2];
+
+                if (fLineDepth > fCachedDepth)
+                {
+                    vProbeVisibility._2 = false;
+                    fWeightsWithDepth[2] = 0.0f;
+                }
+                else
+                {
+                    vProbeVisibility._2 = true;
+                    fWeightsWithDepth[2] = fWeights[2];
+                    fTotalWeightWithDepth += fWeightsWithDepth[2];
+                }
             }
 
             { // 3 -> 0, 1, 2
@@ -325,13 +357,21 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex._0, vTetVertex._1, vTetVertex._2, vTetVertex._3, vCurPos, out fLineDepth);
                 var vBary = MakeBaryCoord(vTetVertex._0, vTetVertex._1, vTetVertex._2, vCurPos);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
-                var fVisible = (fLineDepth > fCachedDepth) ? 0.0f : 1.0f;
 
                 fWeights[3] = (vTetVertex._3 - vP).magnitude;
-                fWeightsWithDepth[3] = fWeights[3] * fVisible;
-
                 fTotalWeight += fWeights[3];
-                fTotalWeightWithDepth += fWeightsWithDepth[3];
+
+                if (fLineDepth > fCachedDepth)
+                {
+                    vProbeVisibility._3 = false;
+                    fWeightsWithDepth[3] = 0.0f;
+                }
+                else
+                {
+                    vProbeVisibility._3 = true;
+                    fWeightsWithDepth[3] = fWeights[3];
+                    fTotalWeightWithDepth += fWeightsWithDepth[3];
+                }
             }
 
             var shTmpColorAcc = new SHColor();
