@@ -959,7 +959,7 @@ public class InfProbeGenInspector : Editor
                 var fLongest = vDiff.magnitude;
                 if (fLongest <= 0.0001f)
                 {
-                    _prb_depthToIndex(ref tetDepth, iID++) = 0xff;
+                    _prb_depthToIndex(ref tetDepth, iID++) = 0x00;
                 }
                 else {
                     var vToward = vDiff / fLongest;
