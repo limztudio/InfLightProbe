@@ -65,14 +65,6 @@ public class InfProbeGenInspector : Editor
 
     private InfProbeGen probeGen;
 
-    private int[] depthIndexTable = new int[] {
-        0,
-        5, 1,
-        9, 6, 2,
-        12, 10, 7, 3,
-        14, 13, 11, 8, 4
-    };
-
     private List<InfProbeFinder> probeFinderList = new List<InfProbeFinder>();
     private List<Renderer> probeFinderRendererList = new List<Renderer>();
     private List<MeshFilter> renderableMeshList = new List<MeshFilter>();
@@ -105,6 +97,13 @@ public class InfProbeGenInspector : Editor
     private static extern float TGGetTetVolume(float[] vInputTet);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern float TGGetOctVolume(float[] vInputOct);
+
+    [DllImport("colldetect_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void CDReserveColliderTable(uint numColl);
+    [DllImport("colldetect_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern bool CDAddCollider(float[] vertices, uint numVert);
+    [DllImport("colldetect_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void CDFillDepthInfo(float[] rawVertices, byte[] rawDepthMap, uint numTet);
 
 
     private static float[] _vector3sToFloats(Vector3[] vAry)
@@ -250,43 +249,6 @@ public class InfProbeGenInspector : Editor
                 return ref tetFloat43._3;
         }
         return ref tetFloat43._3;
-    }
-    private static ref byte _prb_depthToIndex(ref TetDepth tetDepth, int iID)
-    {
-        switch (iID)
-        {
-            case 0:
-                return ref tetDepth._00;
-            case 1:
-                return ref tetDepth._01;
-            case 2:
-                return ref tetDepth._02;
-            case 3:
-                return ref tetDepth._03;
-            case 4:
-                return ref tetDepth._04;
-            case 5:
-                return ref tetDepth._05;
-            case 6:
-                return ref tetDepth._06;
-            case 7:
-                return ref tetDepth._07;
-            case 8:
-                return ref tetDepth._08;
-            case 9:
-                return ref tetDepth._09;
-            case 10:
-                return ref tetDepth._10;
-            case 11:
-                return ref tetDepth._11;
-            case 12:
-                return ref tetDepth._12;
-            case 13:
-                return ref tetDepth._13;
-            case 14:
-                return ref tetDepth._14;
-        }
-        return ref tetDepth._14;
     }
 
     private static Vector3 _averageVector3s(Vector3[] vAry)
@@ -897,130 +859,142 @@ public class InfProbeGenInspector : Editor
             probeFinder.InitProbeFinder();
     }
 
-    private static bool _rayTriIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, ref float t)
-    {
-        Vector3 e1 = v1 - v0;
-        Vector3 e2 = v2 - v0;
-
-        Vector3 h = Vector3.Cross(ray.direction, e2);
-        float a = Vector3.Dot(e1, h);
-        if ((a > -RAY_COMP_EPSILON) && (a < RAY_COMP_EPSILON))
-            return false;
-
-        float f = 1.0f / a;
-
-        Vector3 s = ray.origin - v0;
-        float u = f * Vector3.Dot(s, h);
-        if ((u < 0.0f) || (u > 1.0f))
-            return false;
-
-        Vector3 q = Vector3.Cross(s, e1);
-        float v = f * Vector3.Dot(ray.direction, q);
-        if ((v < 0.0f) || (u + v > 1.0f))
-            return false;
-
-        float _t = f * Vector3.Dot(e2, q);
-        if (_t > RAY_COMP_EPSILON)
-        {
-            t = _t;
-            return true;
-        }
-        else
-            return false;
-    }
-    private void _fillTriInfo(ref TetDepth tetDepth, Vector3 vOrigin, Vector3 v0, Vector3 v1, Vector3 v2)
-    {
-        int iID = 0;
-
-        // (0,0)      (1,0)
-        //  v0 ------- v1
-        //  |         /
-        //  |        /
-        //  |       /
-        //  |      /
-        //  |     /
-        //  |    /
-        //  |   /
-        //  |  /
-        //  | /
-        //  v2
-        // (0,1)
-
-        for (int i = 0; i <= 4; ++i)
-        {
-            var vP = Vector3.Lerp(v0, v2, i * 0.25f);
-            var vQ = Vector3.Lerp(v0, v1, i * 0.25f);
-
-            for (int j = 0; j <= i; ++j)
-            {
-                var vTarget = Vector3.Lerp(vP, vQ, j * 0.25f);
-
-                var vDiff = vTarget - vOrigin;
-                var fLongest = vDiff.magnitude;
-                if (fLongest <= 0.0001f)
-                {
-                    _prb_depthToIndex(ref tetDepth, iID++) = 0x00;
-                }
-                else {
-                    var vToward = vDiff / fLongest;
-                    var rToward = new Ray(vOrigin, vToward);
-
-                    var fShortest = fLongest;
-                    foreach (var filter in renderableMeshList)
-                    {
-                        var bAABB = filter.sharedMesh.bounds;
-                        var vAABBMin = filter.transform.TransformVector(bAABB.min);
-                        var vAABBMax = filter.transform.TransformVector(bAABB.max);
-                        bAABB.SetMinMax(vAABBMin, vAABBMax);
-                        if (!bAABB.IntersectRay(rToward))
-                            continue;
-            
-                        for (int iSubMesh = 0; iSubMesh < filter.sharedMesh.subMeshCount; ++iSubMesh)
-                        {
-                            var indices = filter.sharedMesh.GetIndices(iSubMesh);
-                            for (int iIndex = 0; iIndex < indices.Length; iIndex += 3)
-                            {
-                                var fDist = fLongest;
-                                if(_rayTriIntersect(
-                                    rToward,
-                                    filter.transform.TransformVector(filter.sharedMesh.vertices[indices[iIndex + 0]]),
-                                    filter.transform.TransformVector(filter.sharedMesh.vertices[indices[iIndex + 1]]),
-                                    filter.transform.TransformVector(filter.sharedMesh.vertices[indices[iIndex + 2]]),
-                                    ref fDist
-                                    ))
-                                {
-                                    fShortest = Mathf.Min(fShortest, fDist);
-                                }
-                            }
-                        }
-                    }
-
-                    fShortest /= fLongest;
-                    fShortest *= 255.0f;
-                    fShortest = Mathf.Clamp(fShortest, 0.0f, 255.0f);
-                    _prb_depthToIndex(ref tetDepth, depthIndexTable[iID++]) = (byte)fShortest;
-                }
-            }
-        }
-    }
     private void _fillDepthInfo()
     {
-        for (int i = 0, e = probeGen.vTetVertices.Length; i < e; ++i)
-        {
-            var vTet = probeGen.vTetVertices[i];
-            ref var iTetDepth = ref probeGen.vTetDepthMap[i];
+        { // init colliders
+            int iSubMeshCount = 0;
+            foreach (var iFilter in renderableMeshList)
+                iSubMeshCount += iFilter.sharedMesh.subMeshCount;
+            CDReserveColliderTable((uint)iSubMeshCount);
 
-            { // 0 -> 1, 2, 3
-                _fillTriInfo(ref iTetDepth._0, vTet._0, vTet._1, vTet._2, vTet._3);
+            foreach (var iFilter in renderableMeshList)
+            {
+                for (int iSubMesh = 0; iSubMesh < iFilter.sharedMesh.subMeshCount; ++iSubMesh)
+                {
+                    var vertices = new Vector3[iFilter.sharedMesh.vertices.Length];
+                    for (int iIndex = 0; iIndex < vertices.Length; ++iIndex)
+                        vertices[iIndex] = iFilter.transform.TransformPoint(iFilter.sharedMesh.vertices[iIndex]);
+
+                    var indices = iFilter.sharedMesh.GetIndices(iSubMesh);
+                    var triangles = new float[indices.Length * 3];
+                    for (int iIndex = 0; iIndex < indices.Length; iIndex += 3)
+                    {
+                        var v0 = vertices[indices[iIndex + 0]];
+                        var v1 = vertices[indices[iIndex + 1]];
+                        var v2 = vertices[indices[iIndex + 2]];
+
+                        triangles[(iIndex + 0) * 3 + 0] = v0.x;
+                        triangles[(iIndex + 0) * 3 + 1] = v0.y;
+                        triangles[(iIndex + 0) * 3 + 2] = v0.z;
+
+                        triangles[(iIndex + 1) * 3 + 0] = v1.x;
+                        triangles[(iIndex + 1) * 3 + 1] = v1.y;
+                        triangles[(iIndex + 1) * 3 + 2] = v1.z;
+
+                        triangles[(iIndex + 2) * 3 + 0] = v2.x;
+                        triangles[(iIndex + 2) * 3 + 1] = v2.y;
+                        triangles[(iIndex + 2) * 3 + 2] = v2.z;
+                    }
+
+                    CDAddCollider(triangles, (uint)triangles.Length);
+                }
             }
-            { // 1 -> 0, 2, 3
-                _fillTriInfo(ref iTetDepth._1, vTet._1, vTet._0, vTet._2, vTet._3);
+        }
+
+        {
+            var vertices = new float[probeGen.vTetVertices.Length * 4 * 3];
+            var depthMap = new byte[probeGen.vTetDepthMap.Length * 4 * 15];
+
+            for (int i = 0; i < probeGen.vTetVertices.Length; ++i)
+            {
+                var vertex = probeGen.vTetVertices[i];
+
+                vertices[(i * 4 * 3) + (0 * 3) + 0] = vertex._0.x;
+                vertices[(i * 4 * 3) + (0 * 3) + 1] = vertex._0.y;
+                vertices[(i * 4 * 3) + (0 * 3) + 2] = vertex._0.z;
+
+                vertices[(i * 4 * 3) + (1 * 3) + 0] = vertex._1.x;
+                vertices[(i * 4 * 3) + (1 * 3) + 1] = vertex._1.y;
+                vertices[(i * 4 * 3) + (1 * 3) + 2] = vertex._1.z;
+
+                vertices[(i * 4 * 3) + (2 * 3) + 0] = vertex._2.x;
+                vertices[(i * 4 * 3) + (2 * 3) + 1] = vertex._2.y;
+                vertices[(i * 4 * 3) + (2 * 3) + 2] = vertex._2.z;
+
+                vertices[(i * 4 * 3) + (3 * 3) + 0] = vertex._3.x;
+                vertices[(i * 4 * 3) + (3 * 3) + 1] = vertex._3.y;
+                vertices[(i * 4 * 3) + (3 * 3) + 2] = vertex._3.z;
             }
-            { // 2 -> 0, 1, 3
-                _fillTriInfo(ref iTetDepth._2, vTet._2, vTet._0, vTet._1, vTet._3);
-            }
-            { // 3 -> 0, 1, 2
-                _fillTriInfo(ref iTetDepth._3, vTet._3, vTet._0, vTet._1, vTet._2);
+
+            CDFillDepthInfo(vertices, depthMap, (uint)probeGen.vTetVertices.Length);
+
+            for (int i = 0; i < probeGen.vTetDepthMap.Length; ++i)
+            {
+                ref var depth = ref probeGen.vTetDepthMap[i];
+
+                depth._0._00 = depthMap[(i * 4 * 15) + (0 * 15) + 0];
+                depth._0._01 = depthMap[(i * 4 * 15) + (0 * 15) + 1];
+                depth._0._02 = depthMap[(i * 4 * 15) + (0 * 15) + 2];
+                depth._0._03 = depthMap[(i * 4 * 15) + (0 * 15) + 3];
+                depth._0._04 = depthMap[(i * 4 * 15) + (0 * 15) + 4];
+                depth._0._05 = depthMap[(i * 4 * 15) + (0 * 15) + 5];
+                depth._0._06 = depthMap[(i * 4 * 15) + (0 * 15) + 6];
+                depth._0._07 = depthMap[(i * 4 * 15) + (0 * 15) + 7];
+                depth._0._08 = depthMap[(i * 4 * 15) + (0 * 15) + 8];
+                depth._0._09 = depthMap[(i * 4 * 15) + (0 * 15) + 9];
+                depth._0._10 = depthMap[(i * 4 * 15) + (0 * 15) + 10];
+                depth._0._11 = depthMap[(i * 4 * 15) + (0 * 15) + 11];
+                depth._0._12 = depthMap[(i * 4 * 15) + (0 * 15) + 12];
+                depth._0._13 = depthMap[(i * 4 * 15) + (0 * 15) + 13];
+                depth._0._14 = depthMap[(i * 4 * 15) + (0 * 15) + 14];
+
+                depth._1._00 = depthMap[(i * 4 * 15) + (1 * 15) + 0];
+                depth._1._01 = depthMap[(i * 4 * 15) + (1 * 15) + 1];
+                depth._1._02 = depthMap[(i * 4 * 15) + (1 * 15) + 2];
+                depth._1._03 = depthMap[(i * 4 * 15) + (1 * 15) + 3];
+                depth._1._04 = depthMap[(i * 4 * 15) + (1 * 15) + 4];
+                depth._1._05 = depthMap[(i * 4 * 15) + (1 * 15) + 5];
+                depth._1._06 = depthMap[(i * 4 * 15) + (1 * 15) + 6];
+                depth._1._07 = depthMap[(i * 4 * 15) + (1 * 15) + 7];
+                depth._1._08 = depthMap[(i * 4 * 15) + (1 * 15) + 8];
+                depth._1._09 = depthMap[(i * 4 * 15) + (1 * 15) + 9];
+                depth._1._10 = depthMap[(i * 4 * 15) + (1 * 15) + 10];
+                depth._1._11 = depthMap[(i * 4 * 15) + (1 * 15) + 11];
+                depth._1._12 = depthMap[(i * 4 * 15) + (1 * 15) + 12];
+                depth._1._13 = depthMap[(i * 4 * 15) + (1 * 15) + 13];
+                depth._1._14 = depthMap[(i * 4 * 15) + (1 * 15) + 14];
+
+                depth._2._00 = depthMap[(i * 4 * 15) + (2 * 15) + 0];
+                depth._2._01 = depthMap[(i * 4 * 15) + (2 * 15) + 1];
+                depth._2._02 = depthMap[(i * 4 * 15) + (2 * 15) + 2];
+                depth._2._03 = depthMap[(i * 4 * 15) + (2 * 15) + 3];
+                depth._2._04 = depthMap[(i * 4 * 15) + (2 * 15) + 4];
+                depth._2._05 = depthMap[(i * 4 * 15) + (2 * 15) + 5];
+                depth._2._06 = depthMap[(i * 4 * 15) + (2 * 15) + 6];
+                depth._2._07 = depthMap[(i * 4 * 15) + (2 * 15) + 7];
+                depth._2._08 = depthMap[(i * 4 * 15) + (2 * 15) + 8];
+                depth._2._09 = depthMap[(i * 4 * 15) + (2 * 15) + 9];
+                depth._2._10 = depthMap[(i * 4 * 15) + (2 * 15) + 10];
+                depth._2._11 = depthMap[(i * 4 * 15) + (2 * 15) + 11];
+                depth._2._12 = depthMap[(i * 4 * 15) + (2 * 15) + 12];
+                depth._2._13 = depthMap[(i * 4 * 15) + (2 * 15) + 13];
+                depth._2._14 = depthMap[(i * 4 * 15) + (2 * 15) + 14];
+
+                depth._3._00 = depthMap[(i * 4 * 15) + (3 * 15) + 0];
+                depth._3._01 = depthMap[(i * 4 * 15) + (3 * 15) + 1];
+                depth._3._02 = depthMap[(i * 4 * 15) + (3 * 15) + 2];
+                depth._3._03 = depthMap[(i * 4 * 15) + (3 * 15) + 3];
+                depth._3._04 = depthMap[(i * 4 * 15) + (3 * 15) + 4];
+                depth._3._05 = depthMap[(i * 4 * 15) + (3 * 15) + 5];
+                depth._3._06 = depthMap[(i * 4 * 15) + (3 * 15) + 6];
+                depth._3._07 = depthMap[(i * 4 * 15) + (3 * 15) + 7];
+                depth._3._08 = depthMap[(i * 4 * 15) + (3 * 15) + 8];
+                depth._3._09 = depthMap[(i * 4 * 15) + (3 * 15) + 9];
+                depth._3._10 = depthMap[(i * 4 * 15) + (3 * 15) + 10];
+                depth._3._11 = depthMap[(i * 4 * 15) + (3 * 15) + 11];
+                depth._3._12 = depthMap[(i * 4 * 15) + (3 * 15) + 12];
+                depth._3._13 = depthMap[(i * 4 * 15) + (3 * 15) + 13];
+                depth._3._14 = depthMap[(i * 4 * 15) + (3 * 15) + 14];
             }
         }
     }
