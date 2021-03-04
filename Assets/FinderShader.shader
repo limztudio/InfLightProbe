@@ -40,7 +40,7 @@ Shader "Custom/FinderShader"
 
             v2f vert (appdata v)
             {
-                half3 vNormalM = mul(v.normal, (float3x3)unity_WorldToObject);
+                half3 vNormalM = normalize(mul(v.normal, (float3x3)unity_WorldToObject));
 
                 v2f o;
 

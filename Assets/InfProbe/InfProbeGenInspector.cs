@@ -616,10 +616,10 @@ public class InfProbeGenInspector : Editor
         {
             tmpCamera.allowHDR = false;
             tmpCamera.allowMSAA = false;
-            tmpCamera.backgroundColor = Color.black;
+            tmpCamera.backgroundColor = new Color(0.192157f, 0.3019608f, 0.4745098f);
             tmpCamera.aspect = 1.0f;
-            tmpCamera.nearClipPlane = 0.01f;
-            tmpCamera.farClipPlane = 1000.0f;
+            tmpCamera.nearClipPlane = 0.0001f;
+            tmpCamera.farClipPlane = 100000.0f;
             //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
             tmpCamera.clearFlags = CameraClearFlags.Skybox;
         }
