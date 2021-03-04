@@ -33,30 +33,30 @@ public class InfProbeFinderInspector : Editor
             {
                 Handles.color = Color.gray;
 
-                Handles.DrawLine(probeGen.vTetVertices[probeFinder.iLastProbe]._0, probeGen.vTetVertices[probeFinder.iLastProbe]._1);
-                Handles.DrawLine(probeGen.vTetVertices[probeFinder.iLastProbe]._0, probeGen.vTetVertices[probeFinder.iLastProbe]._2);
-                Handles.DrawLine(probeGen.vTetVertices[probeFinder.iLastProbe]._0, probeGen.vTetVertices[probeFinder.iLastProbe]._3);
+                Handles.DrawLine(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._0], probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._1]);
+                Handles.DrawLine(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._0], probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._2]);
+                Handles.DrawLine(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._0], probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._3]);
 
-                Handles.DrawLine(probeGen.vTetVertices[probeFinder.iLastProbe]._1, probeGen.vTetVertices[probeFinder.iLastProbe]._2);
-                Handles.DrawLine(probeGen.vTetVertices[probeFinder.iLastProbe]._1, probeGen.vTetVertices[probeFinder.iLastProbe]._3);
+                Handles.DrawLine(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._1], probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._2]);
+                Handles.DrawLine(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._1], probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._3]);
 
-                Handles.DrawLine(probeGen.vTetVertices[probeFinder.iLastProbe]._2, probeGen.vTetVertices[probeFinder.iLastProbe]._3);
+                Handles.DrawLine(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._2], probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._3]);
             }
 
             {
                 var vSize = new Vector3(0.2f, 0.2f, 0.2f);
 
                 Handles.color = probeFinder.vProbeVisibility._0 ? Color.red : Color.gray;
-                Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._0, vSize);
+                Handles.DrawWireCube(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._0], vSize);
 
                 Handles.color = probeFinder.vProbeVisibility._1 ? Color.green : Color.gray;
-                Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._1, vSize);
+                Handles.DrawWireCube(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._1], vSize);
 
                 Handles.color = probeFinder.vProbeVisibility._2 ? Color.blue : Color.gray;
-                Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._2, vSize);
+                Handles.DrawWireCube(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._2], vSize);
 
                 Handles.color = probeFinder.vProbeVisibility._3 ? Color.magenta : Color.gray;
-                Handles.DrawWireCube(probeGen.vTetVertices[probeFinder.iLastProbe]._3, vSize);
+                Handles.DrawWireCube(probeGen.vTetPositions[probeGen.vTetIndices[probeFinder.iLastProbe]._3], vSize);
             }
         }
     }

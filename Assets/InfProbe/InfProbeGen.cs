@@ -49,11 +49,11 @@ public class InfProbeGen : MonoBehaviour
     public float fMinVolume = 10.0f;
     public float fSHDiff = 0.1f;
 
-    public TetFloat43[] vTetVertices;
+    public TetInt4[] vTetIndices;
     public TetInt4[] vTetAdjIndices;
     public TetFloat43[] vTetBaryMatrices;
     public TetDepthMap[] vTetDepthMap;
-    public TetInt4[] vTetSHIndices;
+    public Vector3[] vTetPositions;
     public SHColor[] vSHColors;
 
     private void Awake()

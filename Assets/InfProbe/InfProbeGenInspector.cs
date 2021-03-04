@@ -200,16 +200,6 @@ public class InfProbeGenInspector : Editor
         return uOut;
     }
 
-    private static TGVector4x3 _prb_convert(TetFloat43 vInp)
-    {
-        TGVector4x3 vOut = new TGVector4x3();
-        vOut.vectors = new Vector3[4];
-        vOut.vectors[0] = vInp._0;
-        vOut.vectors[1] = vInp._1;
-        vOut.vectors[2] = vInp._2;
-        vOut.vectors[3] = vInp._3;
-        return vOut;
-    }
     private static TetInt4[] _prb_uintsToInt4s(uint[] uAry)
     {
         TetInt4[] iOut = new TetInt4[uAry.Length >> 2];
@@ -659,10 +649,10 @@ public class InfProbeGenInspector : Editor
             fTotalWeight = (4.0f * 3.14159f) / fTotalWeight;
         }
 
-        bool[] oldRendererVisible = new bool[probeFinderRendererList.Count];
+        var bOldRendererVisible = new bool[probeFinderRendererList.Count];
         for (int i = 0; i < probeFinderRendererList.Count; ++i)
         {
-            oldRendererVisible[i] = probeFinderRendererList[i].enabled;
+            bOldRendererVisible[i] = probeFinderRendererList[i].enabled;
             probeFinderRendererList[i].enabled = false;
         }
 
@@ -685,9 +675,9 @@ public class InfProbeGenInspector : Editor
 
             var iTetCount = (int)TGGetTetCount();
 
-            float[] fRawRootVertices = new float[iTetCount * 4 * 3];
+            var fRawRootVertices = new float[iTetCount * 4 * 3];
             TGGetTetVertices(fRawRootVertices);
-            TGVector4x3[] vRootTetVertices = _vector3sToVector43s(_floatsToVector3s(fRawRootVertices));
+            var vRootTetVertices = _vector3sToVector43s(_floatsToVector3s(fRawRootVertices));
 
             for (int i = 0; i < iTetCount; ++i)
             {
@@ -723,30 +713,31 @@ public class InfProbeGenInspector : Editor
 
             var iTetCount = (int)TGGetTetCount();
 
-            float[] fRawSubVertices = new float[iTetCount * 4 * 3];
+            var fRawSubVertices = new float[iTetCount * 4 * 3];
             TGGetTetVertices(fRawSubVertices);
-            probeGen.vTetVertices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
+            var vTetVertices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
 
-            uint[] uRawSubIntraIndices = new uint[iTetCount * 4];
+            var uRawSubIntraIndices = new uint[iTetCount * 4];
             TGGetTetIntraIndices(uRawSubIntraIndices);
-            TGUint4[] vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
+            var vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
 
-            probeGen.vTetSHIndices = new TetInt4[iTetCount];
+            probeGen.vTetIndices = new TetInt4[iTetCount];
 
             var iTetSHIndex = 0;
-            var vTmpSHIndices = new Dictionary<Vector3, int>();
+            var vTmpIndices = new Dictionary<Vector3, int>();
 
+            var vTmpPositions = new List<Vector3>();
             var vTmpSHColors = new List<SHColor>();
 
             for (i = 0; i < iTetCount; ++i)
             {
                 TetFloat43 vNewVert = new TetFloat43();
                 {
-                    vNewVert._0 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
-                    vNewVert._1 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
-                    vNewVert._2 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
-                    vNewVert._3 = _prb_float43ToIndex(ref probeGen.vTetVertices[i], (int)vSubIntraIndices[i].ind[3]);
-                    probeGen.vTetVertices[i] = vNewVert;
+                    vNewVert._0 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
+                    vNewVert._1 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
+                    vNewVert._2 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
+                    vNewVert._3 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[3]);
+                    vTetVertices[i] = vNewVert;
                 }
 
                 {
@@ -759,15 +750,16 @@ public class InfProbeGenInspector : Editor
                         out shColor
                         );
 
-                    if (!vTmpSHIndices.ContainsKey(vNewVert._0))
+                    if (!vTmpIndices.ContainsKey(vNewVert._0))
                     {
-                        probeGen.vTetSHIndices[i]._0 = iTetSHIndex;
-                        vTmpSHIndices[vNewVert._0] = iTetSHIndex;
+                        probeGen.vTetIndices[i]._0 = iTetSHIndex;
+                        vTmpIndices[vNewVert._0] = iTetSHIndex;
+                        vTmpPositions.Add(vNewVert._0);
                         vTmpSHColors.Add(shColor);
                         ++iTetSHIndex;
                     }
                     else
-                        probeGen.vTetSHIndices[i]._0 = vTmpSHIndices[vNewVert._0];
+                        probeGen.vTetIndices[i]._0 = vTmpIndices[vNewVert._0];
                 }
                 {
                     var shColor = new SHColor();
@@ -779,15 +771,16 @@ public class InfProbeGenInspector : Editor
                         out shColor
                         );
 
-                    if (!vTmpSHIndices.ContainsKey(vNewVert._1))
+                    if (!vTmpIndices.ContainsKey(vNewVert._1))
                     {
-                        probeGen.vTetSHIndices[i]._1 = iTetSHIndex;
-                        vTmpSHIndices[vNewVert._1] = iTetSHIndex;
+                        probeGen.vTetIndices[i]._1 = iTetSHIndex;
+                        vTmpIndices[vNewVert._1] = iTetSHIndex;
+                        vTmpPositions.Add(vNewVert._1);
                         vTmpSHColors.Add(shColor);
                         ++iTetSHIndex;
                     }
                     else
-                        probeGen.vTetSHIndices[i]._1 = vTmpSHIndices[vNewVert._1];
+                        probeGen.vTetIndices[i]._1 = vTmpIndices[vNewVert._1];
                 }
                 {
                     var shColor = new SHColor();
@@ -799,15 +792,16 @@ public class InfProbeGenInspector : Editor
                         out shColor
                         );
 
-                    if (!vTmpSHIndices.ContainsKey(vNewVert._2))
+                    if (!vTmpIndices.ContainsKey(vNewVert._2))
                     {
-                        probeGen.vTetSHIndices[i]._2 = iTetSHIndex;
-                        vTmpSHIndices[vNewVert._2] = iTetSHIndex;
+                        probeGen.vTetIndices[i]._2 = iTetSHIndex;
+                        vTmpIndices[vNewVert._2] = iTetSHIndex;
+                        vTmpPositions.Add(vNewVert._2);
                         vTmpSHColors.Add(shColor);
                         ++iTetSHIndex;
                     }
                     else
-                        probeGen.vTetSHIndices[i]._2 = vTmpSHIndices[vNewVert._2];
+                        probeGen.vTetIndices[i]._2 = vTmpIndices[vNewVert._2];
                 }
                 {
                     var shColor = new SHColor();
@@ -819,17 +813,22 @@ public class InfProbeGenInspector : Editor
                         out shColor
                         );
 
-                    if (!vTmpSHIndices.ContainsKey(vNewVert._3))
+                    if (!vTmpIndices.ContainsKey(vNewVert._3))
                     {
-                        probeGen.vTetSHIndices[i]._3 = iTetSHIndex;
-                        vTmpSHIndices[vNewVert._3] = iTetSHIndex;
+                        probeGen.vTetIndices[i]._3 = iTetSHIndex;
+                        vTmpIndices[vNewVert._3] = iTetSHIndex;
+                        vTmpPositions.Add(vNewVert._3);
                         vTmpSHColors.Add(shColor);
                         ++iTetSHIndex;
                     }
                     else
-                        probeGen.vTetSHIndices[i]._3 = vTmpSHIndices[vNewVert._3];
+                        probeGen.vTetIndices[i]._3 = vTmpIndices[vNewVert._3];
                 }
             }
+
+            probeGen.vTetPositions = new Vector3[vTmpPositions.Count];
+            for (i = 0; i < vTmpPositions.Count; ++i)
+                probeGen.vTetPositions[i] = vTmpPositions[i];
 
             probeGen.vSHColors = new SHColor[vTmpSHColors.Count];
             for (i = 0; i < vTmpSHColors.Count; ++i)
@@ -844,19 +843,17 @@ public class InfProbeGenInspector : Editor
             probeGen.vTetBaryMatrices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubBaryMatrices));
 
             probeGen.vTetDepthMap = new TetDepthMap[iTetCount];
-
-            renderLines.Clear();
-            foreach (var vTet in probeGen.vTetVertices)
-                _pushRenderTet(_prb_convert(vTet));
         }
 
         DestroyImmediate(tmpObject);
 
         for (int i = 0; i < probeFinderRendererList.Count; ++i)
-            probeFinderRendererList[i].enabled = oldRendererVisible[i];
+            probeFinderRendererList[i].enabled = bOldRendererVisible[i];
 
         foreach (var probeFinder in probeFinderList)
             probeFinder.InitProbeFinder();
+
+        _updateLineList();
     }
 
     private void _fillDepthInfo()
@@ -902,31 +899,31 @@ public class InfProbeGenInspector : Editor
         }
 
         {
-            var vertices = new float[probeGen.vTetVertices.Length * 4 * 3];
+            var vertices = new float[probeGen.vTetIndices.Length * 4 * 3];
             var depthMap = new byte[probeGen.vTetDepthMap.Length * 4 * 15];
 
-            for (int i = 0; i < probeGen.vTetVertices.Length; ++i)
+            for (int i = 0; i < probeGen.vTetIndices.Length; ++i)
             {
-                var vertex = probeGen.vTetVertices[i];
+                ref var vertex = ref probeGen.vTetIndices[i];
 
-                vertices[(i * 4 * 3) + (0 * 3) + 0] = vertex._0.x;
-                vertices[(i * 4 * 3) + (0 * 3) + 1] = vertex._0.y;
-                vertices[(i * 4 * 3) + (0 * 3) + 2] = vertex._0.z;
+                vertices[(i * 4 * 3) + (0 * 3) + 0] = probeGen.vTetPositions[vertex._0].x;
+                vertices[(i * 4 * 3) + (0 * 3) + 1] = probeGen.vTetPositions[vertex._0].y;
+                vertices[(i * 4 * 3) + (0 * 3) + 2] = probeGen.vTetPositions[vertex._0].z;
 
-                vertices[(i * 4 * 3) + (1 * 3) + 0] = vertex._1.x;
-                vertices[(i * 4 * 3) + (1 * 3) + 1] = vertex._1.y;
-                vertices[(i * 4 * 3) + (1 * 3) + 2] = vertex._1.z;
+                vertices[(i * 4 * 3) + (1 * 3) + 0] = probeGen.vTetPositions[vertex._1].x;
+                vertices[(i * 4 * 3) + (1 * 3) + 1] = probeGen.vTetPositions[vertex._1].y;
+                vertices[(i * 4 * 3) + (1 * 3) + 2] = probeGen.vTetPositions[vertex._1].z;
 
-                vertices[(i * 4 * 3) + (2 * 3) + 0] = vertex._2.x;
-                vertices[(i * 4 * 3) + (2 * 3) + 1] = vertex._2.y;
-                vertices[(i * 4 * 3) + (2 * 3) + 2] = vertex._2.z;
+                vertices[(i * 4 * 3) + (2 * 3) + 0] = probeGen.vTetPositions[vertex._2].x;
+                vertices[(i * 4 * 3) + (2 * 3) + 1] = probeGen.vTetPositions[vertex._2].y;
+                vertices[(i * 4 * 3) + (2 * 3) + 2] = probeGen.vTetPositions[vertex._2].z;
 
-                vertices[(i * 4 * 3) + (3 * 3) + 0] = vertex._3.x;
-                vertices[(i * 4 * 3) + (3 * 3) + 1] = vertex._3.y;
-                vertices[(i * 4 * 3) + (3 * 3) + 2] = vertex._3.z;
+                vertices[(i * 4 * 3) + (3 * 3) + 0] = probeGen.vTetPositions[vertex._3].x;
+                vertices[(i * 4 * 3) + (3 * 3) + 1] = probeGen.vTetPositions[vertex._3].y;
+                vertices[(i * 4 * 3) + (3 * 3) + 2] = probeGen.vTetPositions[vertex._3].z;
             }
 
-            CDFillDepthInfo(vertices, depthMap, (uint)probeGen.vTetVertices.Length);
+            CDFillDepthInfo(vertices, depthMap, (uint)probeGen.vTetIndices.Length);
 
             for (int i = 0; i < probeGen.vTetDepthMap.Length; ++i)
             {
@@ -1006,6 +1003,27 @@ public class InfProbeGenInspector : Editor
         _fillDepthInfo();
     }
 
+    private void _updateLineList()
+    {
+        renderLines.Clear();
+
+        if (probeGen.vTetIndices == null)
+            return;
+
+        foreach (var iIndices in probeGen.vTetIndices)
+        {
+            var vVal = new TGVector4x3();
+            vVal.vectors = new Vector3[4];
+
+            vVal.vectors[0] = probeGen.vTetPositions[iIndices._0];
+            vVal.vectors[1] = probeGen.vTetPositions[iIndices._1];
+            vVal.vectors[2] = probeGen.vTetPositions[iIndices._2];
+            vVal.vectors[3] = probeGen.vTetPositions[iIndices._3];
+
+            _pushRenderTet(vVal);
+        }
+    }
+
 
     private void OnEnable()
     {
@@ -1013,6 +1031,8 @@ public class InfProbeGenInspector : Editor
 
         bufTmpBuffers[0] = new ComputeBuffer(6 * 9 * 3, sizeof(float));
         bufTmpBuffers[1] = new ComputeBuffer(6 * PROBE_RENDER_SIZE * 9 * 3, sizeof(float));
+
+        _updateLineList();
     }
     private void OnDisable()
     {
@@ -1039,11 +1059,12 @@ public class InfProbeGenInspector : Editor
                 Handles.DrawLine(vLine.v0, vLine.v1);
         }
 
+        if(probeGen.vTetPositions != null && probeGen.vTetPositions.Length > 0)
         { // render Probes
             var vSize = new Vector3(0.2f, 0.2f, 0.2f);
 
             Handles.color = Color.magenta;
-            foreach (var vProbe in cachedSubPositions)
+            foreach (var vProbe in probeGen.vTetPositions)
                 Handles.DrawWireCube(vProbe, vSize);
         }
 
