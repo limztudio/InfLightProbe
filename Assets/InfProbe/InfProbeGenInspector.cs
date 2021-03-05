@@ -619,7 +619,7 @@ public class InfProbeGenInspector : Editor
             tmpCamera.backgroundColor = new Color(0.192157f, 0.3019608f, 0.4745098f);
             tmpCamera.aspect = 1.0f;
             tmpCamera.nearClipPlane = 0.0001f;
-            tmpCamera.farClipPlane = 100000.0f;
+            tmpCamera.farClipPlane = 1000.0f;
             //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
             tmpCamera.clearFlags = CameraClearFlags.Skybox;
         }
@@ -850,9 +850,6 @@ public class InfProbeGenInspector : Editor
         for (int i = 0; i < probeFinderRendererList.Count; ++i)
             probeFinderRendererList[i].enabled = bOldRendererVisible[i];
 
-        foreach (var probeFinder in probeFinderList)
-            probeFinder.InitProbeFinder();
-
         _updateLineList();
     }
 
@@ -1001,6 +998,9 @@ public class InfProbeGenInspector : Editor
         _collectObjects();
         _generateTets();
         _fillDepthInfo();
+
+        foreach (var probeFinder in probeFinderList)
+            probeFinder.InitProbeFinder();
     }
 
     private void _updateLineList()
@@ -1080,3 +1080,4 @@ public class InfProbeGenInspector : Editor
         }
     }
 }
+

@@ -518,7 +518,7 @@ public class InfProbeFinder : MonoBehaviour
 
             shColor = new SHShaderColor();
             {
-                shColor.vBand0Base0RGB = shTmpColorAcc.SH[0] * 0.282095f;
+                shColor.vBand0Base0RGB = shTmpColorAcc.SH[0];
                 shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R = new Vector4(
                     shTmpColorAcc.SH[1].x,
                     shTmpColorAcc.SH[2].x,
