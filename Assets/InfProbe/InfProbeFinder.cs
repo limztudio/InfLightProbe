@@ -383,14 +383,24 @@ public class InfProbeFinder : MonoBehaviour
 
             do
             {
-                float fSHWeight;
-                float fSHTotalWeightInv;
-
                 if (fTotalWeightWithDepth > 0.0f)
                 {
-                    fSHTotalWeightInv = 1.0f / fTotalWeightWithDepth;
+                    {
+                        fWeightsWithDepth[0] = (fWeightsWithDepth[0] > 0.0001f) ? (fTotalWeightWithDepth / fWeightsWithDepth[0]) : 0.0f;
+                        fWeightsWithDepth[1] = (fWeightsWithDepth[1] > 0.0001f) ? (fTotalWeightWithDepth / fWeightsWithDepth[1]) : 0.0f;
+                        fWeightsWithDepth[2] = (fWeightsWithDepth[2] > 0.0001f) ? (fTotalWeightWithDepth / fWeightsWithDepth[2]) : 0.0f;
+                        fWeightsWithDepth[3] = (fWeightsWithDepth[3] > 0.0001f) ? (fTotalWeightWithDepth / fWeightsWithDepth[3]) : 0.0f;
 
-                    if (Mathf.Abs(fWeightsWithDepth[0] - fTotalWeightWithDepth) < 0.0001f)
+                        fTotalWeightWithDepth = fWeightsWithDepth[0] + fWeightsWithDepth[1] + fWeightsWithDepth[2] + fWeightsWithDepth[3];
+                        fTotalWeightWithDepth = 1.0f / fTotalWeightWithDepth;
+
+                        fWeightsWithDepth[0] *= fTotalWeightWithDepth;
+                        fWeightsWithDepth[1] *= fTotalWeightWithDepth;
+                        fWeightsWithDepth[2] *= fTotalWeightWithDepth;
+                        fWeightsWithDepth[3] *= fTotalWeightWithDepth;
+                    }
+
+                    if (fWeightsWithDepth[0] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i];
@@ -398,13 +408,11 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeightsWithDepth[0] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeightsWithDepth[0] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i] * fWeightsWithDepth[0];
                     }
 
-                    if (Mathf.Abs(fWeightsWithDepth[1] - fTotalWeightWithDepth) < 0.0001f)
+                    if (fWeightsWithDepth[1] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i];
@@ -412,13 +420,11 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeightsWithDepth[1] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeightsWithDepth[1] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i] * fWeightsWithDepth[1];
                     }
 
-                    if (Mathf.Abs(fWeightsWithDepth[2] - fTotalWeightWithDepth) < 0.0001f)
+                    if (fWeightsWithDepth[2] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i];
@@ -426,13 +432,11 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeightsWithDepth[2] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeightsWithDepth[2] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i] * fWeightsWithDepth[2];
                     }
 
-                    if (Mathf.Abs(fWeightsWithDepth[3] - fTotalWeightWithDepth) < 0.0001f)
+                    if (fWeightsWithDepth[3] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i];
@@ -440,17 +444,28 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeightsWithDepth[3] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeightsWithDepth[3] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i] * fWeightsWithDepth[3];
                     }
                 }
                 else
                 {
-                    fSHTotalWeightInv = 1.0f / fTotalWeight;
+                    {
+                        fWeights[0] = (fWeights[0] > 0.0001f) ? (fTotalWeight / fWeights[0]) : 0.0f;
+                        fWeights[1] = (fWeights[1] > 0.0001f) ? (fTotalWeight / fWeights[1]) : 0.0f;
+                        fWeights[2] = (fWeights[2] > 0.0001f) ? (fTotalWeight / fWeights[2]) : 0.0f;
+                        fWeights[3] = (fWeights[3] > 0.0001f) ? (fTotalWeight / fWeights[3]) : 0.0f;
 
-                    if (Mathf.Abs(fWeights[0] - fTotalWeight) < 0.0001f)
+                        fTotalWeight = fWeights[0] + fWeights[1] + fWeights[2] + fWeights[3];
+                        fTotalWeight = 1.0f / fTotalWeight;
+
+                        fWeights[0] *= fTotalWeightWithDepth;
+                        fWeights[1] *= fTotalWeightWithDepth;
+                        fWeights[2] *= fTotalWeightWithDepth;
+                        fWeights[3] *= fTotalWeightWithDepth;
+                    }
+
+                    if (fWeights[0] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i];
@@ -458,13 +473,11 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeights[0] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeights[0] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i] * fWeights[0];
                     }
 
-                    if (Mathf.Abs(fWeights[1] - fTotalWeight) < 0.0001f)
+                    if (fWeights[1] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i];
@@ -472,13 +485,11 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeights[1] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeights[1] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i] * fWeights[1];
                     }
 
-                    if (Mathf.Abs(fWeights[2] - fTotalWeight) < 0.0001f)
+                    if (fWeights[2] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i];
@@ -486,13 +497,11 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeights[2] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeights[2] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i] * fSHWeight;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i] * fWeights[2];
                     }
 
-                    if (Mathf.Abs(fWeights[3] - fTotalWeight) < 0.0001f)
+                    if (fWeights[3] > 0.9998f)
                     {
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i];
@@ -500,10 +509,8 @@ public class InfProbeFinder : MonoBehaviour
                     }
                     else if (fWeights[3] > 0.0001f)
                     {
-                        fSHWeight = 1.0f - (fWeights[3] * fSHTotalWeightInv);
-
                         for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i] * fSHWeight; ;
+                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i] * fWeights[3];
                     }
                 }
             } while (false);
