@@ -147,9 +147,9 @@ void CSMain(
     if(uGroupThreadID.x == 0){
         [unroll]
         for(uint i = 0; i < COFF_COUNT; ++i){
-            BufCoeff[uGroupID.z * MAP_SIZE * COFF_COUNT * 3 + uGroupID.y * COFF_COUNT * 3 + i * 3 + 0] = BufTmpCoeffAcc[0][i].x;
-            BufCoeff[uGroupID.z * MAP_SIZE * COFF_COUNT * 3 + uGroupID.y * COFF_COUNT * 3 + i * 3 + 1] = BufTmpCoeffAcc[0][i].y;
-            BufCoeff[uGroupID.z * MAP_SIZE * COFF_COUNT * 3 + uGroupID.y * COFF_COUNT * 3 + i * 3 + 2] = BufTmpCoeffAcc[0][i].z;
+            BufCoeff[(uGroupID.z * MAP_SIZE * COFF_COUNT * 3) + (uGroupID.y * COFF_COUNT * 3) + (i * 3) + 0] = BufTmpCoeffAcc[0][i].x;
+            BufCoeff[(uGroupID.z * MAP_SIZE * COFF_COUNT * 3) + (uGroupID.y * COFF_COUNT * 3) + (i * 3) + 1] = BufTmpCoeffAcc[0][i].y;
+            BufCoeff[(uGroupID.z * MAP_SIZE * COFF_COUNT * 3) + (uGroupID.y * COFF_COUNT * 3) + (i * 3) + 2] = BufTmpCoeffAcc[0][i].z;
         }
     }
 }

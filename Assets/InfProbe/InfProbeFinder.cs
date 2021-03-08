@@ -596,7 +596,6 @@ public class InfProbeFinder : MonoBehaviour
         Shader.SetGlobalVector("PRB_N2E1G_N2E2G_N2E3G_N2E4G", shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G);
         Shader.SetGlobalVector("PRB_N2E1B_N2E2B_N2E3B_N2E4B", shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B);
         Shader.SetGlobalVector("PRB_N0E0RGB", shColor.vBand0Base0RGB);
-
-        
     }
 }
+

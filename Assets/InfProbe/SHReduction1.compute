@@ -21,9 +21,9 @@ void CSMain(
     uint uGuroupIndex : SV_GroupIndex
 )
 {
-    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].x = BufCoeff[uGroupID.y * MAP_SIZE * COFF_COUNT * 3 + uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 0];
-    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].y = BufCoeff[uGroupID.y * MAP_SIZE * COFF_COUNT * 3 + uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 1];
-    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].z = BufCoeff[uGroupID.y * MAP_SIZE * COFF_COUNT * 3 + uGroupThreadID.x * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 2];
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].x = BufCoeff[(uGroupID.y * MAP_SIZE * COFF_COUNT * 3) + (uGroupThreadID.x * COFF_COUNT * 3) + (uGroupThreadID.z * 3) + 0];
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].y = BufCoeff[(uGroupID.y * MAP_SIZE * COFF_COUNT * 3) + (uGroupThreadID.x * COFF_COUNT * 3) + (uGroupThreadID.z * 3) + 1];
+    BufTmpCoeffAcc[uGroupThreadID.x][uGroupThreadID.z].z = BufCoeff[(uGroupID.y * MAP_SIZE * COFF_COUNT * 3) + (uGroupThreadID.x * COFF_COUNT * 3) + (uGroupThreadID.z * 3) + 2];
     GroupMemoryBarrierWithGroupSync();
 
     [unroll(MAP_SIZE)]
@@ -34,9 +34,9 @@ void CSMain(
     }
 
     if(uGroupThreadID.x == 0){
-        BufCoeffAcc[uGroupID.y * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 0] = BufTmpCoeffAcc[0][uGroupThreadID.z].x;
-        BufCoeffAcc[uGroupID.y * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 1] = BufTmpCoeffAcc[0][uGroupThreadID.z].y;
-        BufCoeffAcc[uGroupID.y * COFF_COUNT * 3 + uGroupThreadID.z * 3 + 2] = BufTmpCoeffAcc[0][uGroupThreadID.z].z;
+        BufCoeffAcc[(uGroupID.y * COFF_COUNT * 3) + (uGroupThreadID.z * 3) + 0] = BufTmpCoeffAcc[0][uGroupThreadID.z].x;
+        BufCoeffAcc[(uGroupID.y * COFF_COUNT * 3) + (uGroupThreadID.z * 3) + 1] = BufTmpCoeffAcc[0][uGroupThreadID.z].y;
+        BufCoeffAcc[(uGroupID.y * COFF_COUNT * 3) + (uGroupThreadID.z * 3) + 2] = BufTmpCoeffAcc[0][uGroupThreadID.z].z;
     }
 }
 
