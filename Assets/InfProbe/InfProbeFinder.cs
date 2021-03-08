@@ -20,6 +20,7 @@ public class InfProbeFinder : MonoBehaviour
 {
     public GameObject objProbeGen;
     public InfProbeGen probeGen = null;
+    private Material material = null;
 
     private Vector3 vOldPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 
@@ -571,10 +572,12 @@ public class InfProbeFinder : MonoBehaviour
     public void InitProbeFinder()
     {
         probeGen = objProbeGen.GetComponent<InfProbeGen>();
+        material = transform.GetComponent<Renderer>().sharedMaterial;
         iLastProbe = 0;
         vOldPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 
         UpdateProbe();
+        UpdateProbeShader();
     }
     public void UpdateProbe()
     {
@@ -585,20 +588,19 @@ public class InfProbeFinder : MonoBehaviour
 
             vOldPos = vCurPos;
         }
-
-        { // test
-            UpdateProbeShader();
-        }
     }
     public void UpdateProbeShader()
     {
-        Shader.SetGlobalVector("PRB_N1E0R_N1E1R_N1E2R_N2E0R", shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R);
-        Shader.SetGlobalVector("PRB_N1E0G_N1E1G_N1E2G_N2E0G", shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G);
-        Shader.SetGlobalVector("PRB_N1E0B_N1E1B_N1E2B_N2E0B", shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B);
-        Shader.SetGlobalVector("PRB_N2E1R_N2E2R_N2E3R_N2E4R", shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R);
-        Shader.SetGlobalVector("PRB_N2E1G_N2E2G_N2E3G_N2E4G", shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G);
-        Shader.SetGlobalVector("PRB_N2E1B_N2E2B_N2E3B_N2E4B", shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B);
-        Shader.SetGlobalVector("PRB_N0E0RGB", shColor.vBand0Base0RGB);
+        if (material)
+        {
+            material.SetVector("PRB_N1E0R_N1E1R_N1E2R_N2E0R", shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R);
+            material.SetVector("PRB_N1E0G_N1E1G_N1E2G_N2E0G", shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G);
+            material.SetVector("PRB_N1E0B_N1E1B_N1E2B_N2E0B", shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B);
+            material.SetVector("PRB_N2E1R_N2E2R_N2E3R_N2E4R", shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R);
+            material.SetVector("PRB_N2E1G_N2E2G_N2E3G_N2E4G", shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G);
+            material.SetVector("PRB_N2E1B_N2E2B_N2E3B_N2E4B", shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B);
+            material.SetVector("PRB_N0E0RGB", shColor.vBand0Base0RGB);
+        }
     }
 }
 

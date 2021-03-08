@@ -27,6 +27,7 @@ public class InfProbeFinderInspector : Editor
         ref var probeGen = ref probeFinder.probeGen;
 
         probeFinder.UpdateProbe();
+        probeFinder.UpdateProbeShader();
 
         if (probeFinder.iLastProbe >= 0)
         {
