@@ -82,15 +82,17 @@ public class InfProbeFinder : MonoBehaviour
         return v._14;
     }
 
-    private static Vector3 IntersectPointWithFace(Vector3 vTri0, Vector3 vTri1, Vector3 vTri2, Vector3 vLine0, Vector3 vLine1, out float fDepth)
+    private static Vector3 IntersectPointWithFace(Vector3 vTri0, Vector3 vTri1, Vector3 vTri2, Vector3 vLine0, Vector3 vLine1, out float fDepth, out float fFaceNormalLength)
     {
         var vFaceNormal = Vector3.Cross((vTri1 - vTri0), (vTri2 - vTri0));
         var fFaceNormalLengthSq = vFaceNormal.sqrMagnitude;
         if (fFaceNormalLengthSq > 0.0001f)
         {
-            var fFaceNormalLength = Mathf.Sqrt(fFaceNormalLengthSq);
+            fFaceNormalLength = Mathf.Sqrt(fFaceNormalLengthSq);
             vFaceNormal /= fFaceNormalLength;
         }
+        else
+            fFaceNormalLength = 0.0f;
 
         var vLineNormal = vLine1 - vLine0;
         var fLineNormalLengthSq = vLineNormal.sqrMagnitude;
@@ -110,7 +112,7 @@ public class InfProbeFinder : MonoBehaviour
 
         return vIntersected;
     }
-    private static Vector2 MakeBaryCoord(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP)
+    private static Vector2 MakeBaryCoord(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 vP, float fFaceNormalLengthInv)
     {
         var v0P = v0 - vP;
         var v1P = v1 - vP;
@@ -118,17 +120,12 @@ public class InfProbeFinder : MonoBehaviour
 
         var vA2 = Vector3.Cross(v0P, v1P);
         var vA1 = Vector3.Cross(v0P, v2P);
-        var vA0 = Vector3.Cross(v1P, v2P);
 
         var fW2 = vA2.magnitude;
         var fW1 = vA1.magnitude;
-        var fW0 = vA0.magnitude;
 
-        var fWT = fW0 + fW1 + fW2;
-        fWT = 1.0f / fWT;
-
-        fW2 *= fWT;
-        fW1 *= fWT;
+        fW2 *= fFaceNormalLengthInv;
+        fW1 *= fFaceNormalLengthInv;
 
         // UV0 is (0, 0), so it is okay to be skipped
         var vUV1 = new Vector2(1.0f, 0.0f);
@@ -136,31 +133,6 @@ public class InfProbeFinder : MonoBehaviour
 
         var vUVP = (vUV1 * fW1) + (vUV2 * fW2);
         return vUVP;
-
-
-        // follwing code is pre-calculate total area ratio of triangle. so it doesn't need to calculate additional Cross, Dot and Sqrt computation.
-        // so it supposed to working correctly, but seems it's not.
-        // still looking for where is the error come from.
-
-        //var v0P = v0 - vP;
-        //var v1P = v1 - vP;
-        //var v2P = v2 - vP;
-
-        //var vA2 = Vector3.Cross(v0P, v1P);
-        //var vA1 = Vector3.Cross(v0P, v2P);
-
-        //var fW2 = vA2.magnitude;
-        //var fW1 = vA1.magnitude;
-
-        //fW2 *= fWholeAreaRatioInv;
-        //fW1 *= fWholeAreaRatioInv;
-
-        //// UV0 is (0, 0), so it is okay to be skipped
-        //var vUV1 = new Vector2(1.0f, 0.0f);
-        //var vUV2 = new Vector2(0.0f, 1.0f);
-
-        //var vUVP = (vUV1 * fW1) + (vUV2 * fW2);
-        //return vUVP;
     }
     private static float GetFaceDepthOnPoint(TetDepth vDepth, Vector2 vBary)
     {
@@ -290,8 +262,9 @@ public class InfProbeFinder : MonoBehaviour
 
             { // 0 -> 1, 2, 3
                 float fLineDepth;
-                var vP = IntersectPointWithFace(vTetVertex1, vTetVertex2, vTetVertex3, vTetVertex0, vCurPos, out fLineDepth);
-                var vBary = MakeBaryCoord(vTetVertex1, vTetVertex2, vTetVertex3, vP);
+                float fFaceNormalLength;
+                var vP = IntersectPointWithFace(vTetVertex1, vTetVertex2, vTetVertex3, vTetVertex0, vCurPos, out fLineDepth, out fFaceNormalLength);
+                var vBary = MakeBaryCoord(vTetVertex1, vTetVertex2, vTetVertex3, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
 
                 fWeights[0] = (vTetVertex0 - vP).magnitude;
@@ -311,8 +284,9 @@ public class InfProbeFinder : MonoBehaviour
 
             { // 1 -> 0, 2, 3
                 float fLineDepth;
-                var vP = IntersectPointWithFace(vTetVertex0, vTetVertex2, vTetVertex3, vTetVertex1, vCurPos, out fLineDepth);
-                var vBary = MakeBaryCoord(vTetVertex0, vTetVertex2, vTetVertex3, vP);
+                float fFaceNormalLength;
+                var vP = IntersectPointWithFace(vTetVertex0, vTetVertex2, vTetVertex3, vTetVertex1, vCurPos, out fLineDepth, out fFaceNormalLength);
+                var vBary = MakeBaryCoord(vTetVertex0, vTetVertex2, vTetVertex3, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
 
                 fWeights[1] = (vTetVertex1 - vP).magnitude;
@@ -333,8 +307,9 @@ public class InfProbeFinder : MonoBehaviour
 
             { // 2 -> 0, 1, 3
                 float fLineDepth;
-                var vP = IntersectPointWithFace(vTetVertex0, vTetVertex1, vTetVertex3, vTetVertex2, vCurPos, out fLineDepth);
-                var vBary = MakeBaryCoord(vTetVertex0, vTetVertex1, vTetVertex3, vP);
+                float fFaceNormalLength;
+                var vP = IntersectPointWithFace(vTetVertex0, vTetVertex1, vTetVertex3, vTetVertex2, vCurPos, out fLineDepth, out fFaceNormalLength);
+                var vBary = MakeBaryCoord(vTetVertex0, vTetVertex1, vTetVertex3, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
 
                 fWeights[2] = (vTetVertex2 - vP).magnitude;
@@ -355,8 +330,9 @@ public class InfProbeFinder : MonoBehaviour
 
             { // 3 -> 0, 1, 2
                 float fLineDepth;
-                var vP = IntersectPointWithFace(vTetVertex0, vTetVertex1, vTetVertex2, vTetVertex3, vCurPos, out fLineDepth);
-                var vBary = MakeBaryCoord(vTetVertex0, vTetVertex1, vTetVertex2, vP);
+                float fFaceNormalLength;
+                var vP = IntersectPointWithFace(vTetVertex0, vTetVertex1, vTetVertex2, vTetVertex3, vCurPos, out fLineDepth, out fFaceNormalLength);
+                var vBary = MakeBaryCoord(vTetVertex0, vTetVertex1, vTetVertex2, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
 
                 fWeights[3] = (vTetVertex3 - vP).magnitude;
