@@ -103,7 +103,7 @@ public class InfProbeGenInspector : Editor
     [DllImport("colldetect_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern bool CDAddCollider(float[] vertices, uint numVert);
     [DllImport("colldetect_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void CDFillDepthInfo(float[] rawVertices, byte[] rawDepthMap, uint numTet);
+    private static extern void CDFillDepthInfo(float[] rawVertices, byte[] rawDepthMap, byte[] rawOccludeMap, uint numTet);
 
 
     private static float[] _vector3sToFloats(Vector3[] vAry)
@@ -285,8 +285,55 @@ public class InfProbeGenInspector : Editor
         return true;
     }
 
+    private static bool _prb_compareDepth(ref TetDepth vLhs, ref TetDepth vRhs)
+    {
+        if (vLhs._00 != vRhs._00)
+            return false;
+        if (vLhs._01 != vRhs._01)
+            return false;
+        if (vLhs._02 != vRhs._02)
+            return false;
+        if (vLhs._03 != vRhs._03)
+            return false;
+        if (vLhs._04 != vRhs._04)
+            return false;
+        if (vLhs._05 != vRhs._05)
+            return false;
+        if (vLhs._06 != vRhs._06)
+            return false;
+        if (vLhs._07 != vRhs._07)
+            return false;
+        if (vLhs._08 != vRhs._08)
+            return false;
+        if (vLhs._09 != vRhs._09)
+            return false;
+        if (vLhs._10 != vRhs._10)
+            return false;
+        if (vLhs._11 != vRhs._11)
+            return false;
+        if (vLhs._12 != vRhs._12)
+            return false;
+        if (vLhs._13 != vRhs._13)
+            return false;
+        if (vLhs._14 != vRhs._14)
+            return false;
+        return true;
+    }
+    private static bool _prb_compareDepthMap(ref TetDepthMap vLhs, ref TetDepthMap vRhs)
+    {
+        if (!_prb_compareDepth(ref vLhs._0, ref vRhs._0))
+            return false;
+        if (!_prb_compareDepth(ref vLhs._1, ref vRhs._1))
+            return false;
+        if (!_prb_compareDepth(ref vLhs._2, ref vRhs._2))
+            return false;
+        if (!_prb_compareDepth(ref vLhs._3, ref vRhs._3))
+            return false;
+        return true;
+    }
 
-    private void _pushRenderTet(TGVector4x3 vTet)
+
+        private void _pushRenderTet(TGVector4x3 vTet)
     {
         renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[1]));
         renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[2]));
@@ -355,6 +402,46 @@ public class InfProbeGenInspector : Editor
                 }
             }
         }
+
+        { // init colliders
+            int iSubMeshCount = 0;
+            foreach (var iFilter in renderableMeshList)
+                iSubMeshCount += iFilter.sharedMesh.subMeshCount;
+            CDReserveColliderTable((uint)iSubMeshCount);
+
+            foreach (var iFilter in renderableMeshList)
+            {
+                for (int iSubMesh = 0; iSubMesh < iFilter.sharedMesh.subMeshCount; ++iSubMesh)
+                {
+                    var vertices = new Vector3[iFilter.sharedMesh.vertices.Length];
+                    for (int iIndex = 0; iIndex < vertices.Length; ++iIndex)
+                        vertices[iIndex] = iFilter.transform.TransformPoint(iFilter.sharedMesh.vertices[iIndex]);
+
+                    var indices = iFilter.sharedMesh.GetIndices(iSubMesh);
+                    var triangles = new float[indices.Length * 3];
+                    for (int iIndex = 0; iIndex < indices.Length; iIndex += 3)
+                    {
+                        var v0 = vertices[indices[iIndex + 0]];
+                        var v1 = vertices[indices[iIndex + 1]];
+                        var v2 = vertices[indices[iIndex + 2]];
+
+                        triangles[(iIndex + 0) * 3 + 0] = v0.x;
+                        triangles[(iIndex + 0) * 3 + 1] = v0.y;
+                        triangles[(iIndex + 0) * 3 + 2] = v0.z;
+
+                        triangles[(iIndex + 1) * 3 + 0] = v1.x;
+                        triangles[(iIndex + 1) * 3 + 1] = v1.y;
+                        triangles[(iIndex + 1) * 3 + 2] = v1.z;
+
+                        triangles[(iIndex + 2) * 3 + 0] = v2.x;
+                        triangles[(iIndex + 2) * 3 + 1] = v2.y;
+                        triangles[(iIndex + 2) * 3 + 2] = v2.z;
+                    }
+
+                    CDAddCollider(triangles, (uint)triangles.Length);
+                }
+            }
+        }
     }
 
     private void _rebuildSH(
@@ -396,6 +483,53 @@ public class InfProbeGenInspector : Editor
             vSH.SH = _floatsToVector3s(vRawSH);
 
             cachedSHList.Add(vPos, vSH);
+        }
+    }
+
+    private void _subdivideTet(
+        TGVector4x3 vParentTet
+        )
+    {
+        TGVector4x3[] vSubTets;
+        TGVector6x3[] vSubOcts;
+        {
+            TGVector4x3[] vInputTets = new TGVector4x3[1];
+            vInputTets[0] = vParentTet;
+
+            float[] fSubTetVertices = new float[4 * 4 * 3];
+            float[] fSubOctVertices = new float[1 * 6 * 3];
+
+            TGSubdivideTet(
+                _vector3sToFloats(_vector43sToVector3s(vInputTets)),
+                fSubTetVertices,
+                fSubOctVertices
+                );
+
+            vSubTets = _vector3sToVector43s(_floatsToVector3s(fSubTetVertices));
+            vSubOcts = _vector3sToVector63s(_floatsToVector3s(fSubOctVertices));
+        }
+
+        foreach (var vSubTet in vSubTets)
+        {
+            TGVector4x3[] vInputTets = new TGVector4x3[1];
+            vInputTets[0] = vSubTet;
+            var fComp = TGGetTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+            if (fComp > probeGen.fMinSubVolume)
+            {
+                foreach (var vPos in vSubTet.vectors)
+                    cachedSubPositions.Add(vPos);
+            }
+        }
+        foreach (var vSubOct in vSubOcts)
+        {
+            TGVector6x3[] vInputOcts = new TGVector6x3[1];
+            vInputOcts[0] = vSubOct;
+            var fComp = TGGetOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
+            if (fComp > probeGen.fMinSubVolume)
+            {
+                foreach (var vPos in vSubOct.vectors)
+                    cachedSubPositions.Add(vPos);
+            }
         }
     }
 
@@ -649,13 +783,6 @@ public class InfProbeGenInspector : Editor
             fTotalWeight = (4.0f * 3.14159f) / fTotalWeight;
         }
 
-        var bOldRendererVisible = new bool[probeFinderRendererList.Count];
-        for (int i = 0; i < probeFinderRendererList.Count; ++i)
-        {
-            bOldRendererVisible[i] = probeFinderRendererList[i].enabled;
-            probeFinderRendererList[i].enabled = false;
-        }
-
         {
             Vector3[] vRootVertices = new Vector3[8];
             {
@@ -703,301 +830,314 @@ public class InfProbeGenInspector : Editor
             }
         }
 
-        {
-            Vector3[] vSubVertices = new Vector3[cachedSubPositions.Count];
-            int i = 0;
-            foreach (var v in cachedSubPositions)
-                vSubVertices[i++] = v;
-
-            TGBuildTets(_vector3sToFloats(vSubVertices), (uint)(vSubVertices.Length * 3));
-
-            var iTetCount = (int)TGGetTetCount();
-
-            var fRawSubVertices = new float[iTetCount * 4 * 3];
-            TGGetTetVertices(fRawSubVertices);
-            var vTetVertices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
-
-            var uRawSubIntraIndices = new uint[iTetCount * 4];
-            TGGetTetIntraIndices(uRawSubIntraIndices);
-            var vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
-
-            probeGen.vTetIndices = new TetInt4[iTetCount];
-
-            var iTetSHIndex = 0;
-            var vTmpIndices = new Dictionary<Vector3, int>();
-
-            var vTmpPositions = new List<Vector3>();
-            var vTmpSHColors = new List<SHColor>();
-
-            for (i = 0; i < iTetCount; ++i)
+        TetDepthMap[] oldTetDepthMap = null;
+        do {
             {
-                TetFloat43 vNewVert = new TetFloat43();
+                Vector3[] vSubVertices = new Vector3[cachedSubPositions.Count];
+                int i = 0;
+                foreach (var v in cachedSubPositions)
+                    vSubVertices[i++] = v;
+
+                TGBuildTets(_vector3sToFloats(vSubVertices), (uint)(vSubVertices.Length * 3));
+
+                var iTetCount = (int)TGGetTetCount();
+
+                var fRawSubVertices = new float[iTetCount * 4 * 3];
+                TGGetTetVertices(fRawSubVertices);
+                var vTetVertices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubVertices));
+
+                var uRawSubIntraIndices = new uint[iTetCount * 4];
+                TGGetTetIntraIndices(uRawSubIntraIndices);
+                var vSubIntraIndices = _uintsToUint4s(uRawSubIntraIndices);
+
+                probeGen.vTetIndices = new TetInt4[iTetCount];
+
+                var iTetSHIndex = 0;
+                var vTmpIndices = new Dictionary<Vector3, int>();
+
+                var vTmpPositions = new List<Vector3>();
+                var vTmpSHColors = new List<SHColor>();
+
+                for (i = 0; i < iTetCount; ++i)
                 {
-                    vNewVert._0 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
-                    vNewVert._1 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
-                    vNewVert._2 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
-                    vNewVert._3 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[3]);
-                    vTetVertices[i] = vNewVert;
+                    TetFloat43 vNewVert = new TetFloat43();
+                    {
+                        vNewVert._0 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[0]);
+                        vNewVert._1 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[1]);
+                        vNewVert._2 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[2]);
+                        vNewVert._3 = _prb_float43ToIndex(ref vTetVertices[i], (int)vSubIntraIndices[i].ind[3]);
+                        vTetVertices[i] = vNewVert;
+                    }
+
+                    {
+                        var shColor = new SHColor();
+                        _rebuildSH(
+                            ref tmpCamera,
+                            ref tmpTexture,
+                            fTotalWeight,
+                            vNewVert._0,
+                            out shColor
+                            );
+
+                        if (!vTmpIndices.ContainsKey(vNewVert._0))
+                        {
+                            probeGen.vTetIndices[i]._0 = iTetSHIndex;
+                            vTmpIndices[vNewVert._0] = iTetSHIndex;
+                            vTmpPositions.Add(vNewVert._0);
+                            vTmpSHColors.Add(shColor);
+                            ++iTetSHIndex;
+                        }
+                        else
+                            probeGen.vTetIndices[i]._0 = vTmpIndices[vNewVert._0];
+                    }
+                    {
+                        var shColor = new SHColor();
+                        _rebuildSH(
+                            ref tmpCamera,
+                            ref tmpTexture,
+                            fTotalWeight,
+                            vNewVert._1,
+                            out shColor
+                            );
+
+                        if (!vTmpIndices.ContainsKey(vNewVert._1))
+                        {
+                            probeGen.vTetIndices[i]._1 = iTetSHIndex;
+                            vTmpIndices[vNewVert._1] = iTetSHIndex;
+                            vTmpPositions.Add(vNewVert._1);
+                            vTmpSHColors.Add(shColor);
+                            ++iTetSHIndex;
+                        }
+                        else
+                            probeGen.vTetIndices[i]._1 = vTmpIndices[vNewVert._1];
+                    }
+                    {
+                        var shColor = new SHColor();
+                        _rebuildSH(
+                            ref tmpCamera,
+                            ref tmpTexture,
+                            fTotalWeight,
+                            vNewVert._2,
+                            out shColor
+                            );
+
+                        if (!vTmpIndices.ContainsKey(vNewVert._2))
+                        {
+                            probeGen.vTetIndices[i]._2 = iTetSHIndex;
+                            vTmpIndices[vNewVert._2] = iTetSHIndex;
+                            vTmpPositions.Add(vNewVert._2);
+                            vTmpSHColors.Add(shColor);
+                            ++iTetSHIndex;
+                        }
+                        else
+                            probeGen.vTetIndices[i]._2 = vTmpIndices[vNewVert._2];
+                    }
+                    {
+                        var shColor = new SHColor();
+                        _rebuildSH(
+                            ref tmpCamera,
+                            ref tmpTexture,
+                            fTotalWeight,
+                            vNewVert._3,
+                            out shColor
+                            );
+
+                        if (!vTmpIndices.ContainsKey(vNewVert._3))
+                        {
+                            probeGen.vTetIndices[i]._3 = iTetSHIndex;
+                            vTmpIndices[vNewVert._3] = iTetSHIndex;
+                            vTmpPositions.Add(vNewVert._3);
+                            vTmpSHColors.Add(shColor);
+                            ++iTetSHIndex;
+                        }
+                        else
+                            probeGen.vTetIndices[i]._3 = vTmpIndices[vNewVert._3];
+                    }
                 }
 
-                {
-                    var shColor = new SHColor();
-                    _rebuildSH(
-                        ref tmpCamera,
-                        ref tmpTexture,
-                        fTotalWeight,
-                        vNewVert._0,
-                        out shColor
-                        );
+                probeGen.vTetPositions = new Vector3[vTmpPositions.Count];
+                for (i = 0; i < vTmpPositions.Count; ++i)
+                    probeGen.vTetPositions[i] = vTmpPositions[i];
 
-                    if (!vTmpIndices.ContainsKey(vNewVert._0))
-                    {
-                        probeGen.vTetIndices[i]._0 = iTetSHIndex;
-                        vTmpIndices[vNewVert._0] = iTetSHIndex;
-                        vTmpPositions.Add(vNewVert._0);
-                        vTmpSHColors.Add(shColor);
-                        ++iTetSHIndex;
-                    }
-                    else
-                        probeGen.vTetIndices[i]._0 = vTmpIndices[vNewVert._0];
+                probeGen.vSHColors = new SHColor[vTmpSHColors.Count];
+                for (i = 0; i < vTmpSHColors.Count; ++i)
+                    probeGen.vSHColors[i] = vTmpSHColors[i];
+
+                uint[] uRawSubAdjIndices = new uint[iTetCount * 4];
+                TGGetTetAjacentIndices(uRawSubAdjIndices);
+                probeGen.vTetAdjIndices = _prb_uintsToInt4s(uRawSubAdjIndices);
+
+                float[] fRawSubBaryMatrices = new float[iTetCount * 4 * 3];
+                TGGetTetBaryMatrices(fRawSubBaryMatrices);
+                probeGen.vTetBaryMatrices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubBaryMatrices));
+
+                probeGen.vTetDepthMap = new TetDepthMap[iTetCount];
+            }
+
+            byte[] occludeMap;
+            {
+                var vertices = new float[probeGen.vTetIndices.Length * 4 * 3];
+                var depthMap = new byte[probeGen.vTetDepthMap.Length * 4 * 15];
+                occludeMap = new byte[probeGen.vTetDepthMap.Length];
+
+                for (int i = 0; i < probeGen.vTetIndices.Length; ++i)
+                {
+                    ref var vertex = ref probeGen.vTetIndices[i];
+
+                    vertices[(i * 4 * 3) + (0 * 3) + 0] = probeGen.vTetPositions[vertex._0].x;
+                    vertices[(i * 4 * 3) + (0 * 3) + 1] = probeGen.vTetPositions[vertex._0].y;
+                    vertices[(i * 4 * 3) + (0 * 3) + 2] = probeGen.vTetPositions[vertex._0].z;
+
+                    vertices[(i * 4 * 3) + (1 * 3) + 0] = probeGen.vTetPositions[vertex._1].x;
+                    vertices[(i * 4 * 3) + (1 * 3) + 1] = probeGen.vTetPositions[vertex._1].y;
+                    vertices[(i * 4 * 3) + (1 * 3) + 2] = probeGen.vTetPositions[vertex._1].z;
+
+                    vertices[(i * 4 * 3) + (2 * 3) + 0] = probeGen.vTetPositions[vertex._2].x;
+                    vertices[(i * 4 * 3) + (2 * 3) + 1] = probeGen.vTetPositions[vertex._2].y;
+                    vertices[(i * 4 * 3) + (2 * 3) + 2] = probeGen.vTetPositions[vertex._2].z;
+
+                    vertices[(i * 4 * 3) + (3 * 3) + 0] = probeGen.vTetPositions[vertex._3].x;
+                    vertices[(i * 4 * 3) + (3 * 3) + 1] = probeGen.vTetPositions[vertex._3].y;
+                    vertices[(i * 4 * 3) + (3 * 3) + 2] = probeGen.vTetPositions[vertex._3].z;
                 }
-                {
-                    var shColor = new SHColor();
-                    _rebuildSH(
-                        ref tmpCamera,
-                        ref tmpTexture,
-                        fTotalWeight,
-                        vNewVert._1,
-                        out shColor
-                        );
 
-                    if (!vTmpIndices.ContainsKey(vNewVert._1))
-                    {
-                        probeGen.vTetIndices[i]._1 = iTetSHIndex;
-                        vTmpIndices[vNewVert._1] = iTetSHIndex;
-                        vTmpPositions.Add(vNewVert._1);
-                        vTmpSHColors.Add(shColor);
-                        ++iTetSHIndex;
-                    }
-                    else
-                        probeGen.vTetIndices[i]._1 = vTmpIndices[vNewVert._1];
-                }
-                {
-                    var shColor = new SHColor();
-                    _rebuildSH(
-                        ref tmpCamera,
-                        ref tmpTexture,
-                        fTotalWeight,
-                        vNewVert._2,
-                        out shColor
-                        );
+                CDFillDepthInfo(vertices, depthMap, occludeMap, (uint)probeGen.vTetIndices.Length);
 
-                    if (!vTmpIndices.ContainsKey(vNewVert._2))
-                    {
-                        probeGen.vTetIndices[i]._2 = iTetSHIndex;
-                        vTmpIndices[vNewVert._2] = iTetSHIndex;
-                        vTmpPositions.Add(vNewVert._2);
-                        vTmpSHColors.Add(shColor);
-                        ++iTetSHIndex;
-                    }
-                    else
-                        probeGen.vTetIndices[i]._2 = vTmpIndices[vNewVert._2];
-                }
+                for (int i = 0; i < probeGen.vTetDepthMap.Length; ++i)
                 {
-                    var shColor = new SHColor();
-                    _rebuildSH(
-                        ref tmpCamera,
-                        ref tmpTexture,
-                        fTotalWeight,
-                        vNewVert._3,
-                        out shColor
-                        );
+                    ref var depth = ref probeGen.vTetDepthMap[i];
 
-                    if (!vTmpIndices.ContainsKey(vNewVert._3))
-                    {
-                        probeGen.vTetIndices[i]._3 = iTetSHIndex;
-                        vTmpIndices[vNewVert._3] = iTetSHIndex;
-                        vTmpPositions.Add(vNewVert._3);
-                        vTmpSHColors.Add(shColor);
-                        ++iTetSHIndex;
-                    }
-                    else
-                        probeGen.vTetIndices[i]._3 = vTmpIndices[vNewVert._3];
+                    depth._0._00 = depthMap[(i * 4 * 15) + (0 * 15) + 0];
+                    depth._0._01 = depthMap[(i * 4 * 15) + (0 * 15) + 1];
+                    depth._0._02 = depthMap[(i * 4 * 15) + (0 * 15) + 2];
+                    depth._0._03 = depthMap[(i * 4 * 15) + (0 * 15) + 3];
+                    depth._0._04 = depthMap[(i * 4 * 15) + (0 * 15) + 4];
+                    depth._0._05 = depthMap[(i * 4 * 15) + (0 * 15) + 5];
+                    depth._0._06 = depthMap[(i * 4 * 15) + (0 * 15) + 6];
+                    depth._0._07 = depthMap[(i * 4 * 15) + (0 * 15) + 7];
+                    depth._0._08 = depthMap[(i * 4 * 15) + (0 * 15) + 8];
+                    depth._0._09 = depthMap[(i * 4 * 15) + (0 * 15) + 9];
+                    depth._0._10 = depthMap[(i * 4 * 15) + (0 * 15) + 10];
+                    depth._0._11 = depthMap[(i * 4 * 15) + (0 * 15) + 11];
+                    depth._0._12 = depthMap[(i * 4 * 15) + (0 * 15) + 12];
+                    depth._0._13 = depthMap[(i * 4 * 15) + (0 * 15) + 13];
+                    depth._0._14 = depthMap[(i * 4 * 15) + (0 * 15) + 14];
+
+                    depth._1._00 = depthMap[(i * 4 * 15) + (1 * 15) + 0];
+                    depth._1._01 = depthMap[(i * 4 * 15) + (1 * 15) + 1];
+                    depth._1._02 = depthMap[(i * 4 * 15) + (1 * 15) + 2];
+                    depth._1._03 = depthMap[(i * 4 * 15) + (1 * 15) + 3];
+                    depth._1._04 = depthMap[(i * 4 * 15) + (1 * 15) + 4];
+                    depth._1._05 = depthMap[(i * 4 * 15) + (1 * 15) + 5];
+                    depth._1._06 = depthMap[(i * 4 * 15) + (1 * 15) + 6];
+                    depth._1._07 = depthMap[(i * 4 * 15) + (1 * 15) + 7];
+                    depth._1._08 = depthMap[(i * 4 * 15) + (1 * 15) + 8];
+                    depth._1._09 = depthMap[(i * 4 * 15) + (1 * 15) + 9];
+                    depth._1._10 = depthMap[(i * 4 * 15) + (1 * 15) + 10];
+                    depth._1._11 = depthMap[(i * 4 * 15) + (1 * 15) + 11];
+                    depth._1._12 = depthMap[(i * 4 * 15) + (1 * 15) + 12];
+                    depth._1._13 = depthMap[(i * 4 * 15) + (1 * 15) + 13];
+                    depth._1._14 = depthMap[(i * 4 * 15) + (1 * 15) + 14];
+
+                    depth._2._00 = depthMap[(i * 4 * 15) + (2 * 15) + 0];
+                    depth._2._01 = depthMap[(i * 4 * 15) + (2 * 15) + 1];
+                    depth._2._02 = depthMap[(i * 4 * 15) + (2 * 15) + 2];
+                    depth._2._03 = depthMap[(i * 4 * 15) + (2 * 15) + 3];
+                    depth._2._04 = depthMap[(i * 4 * 15) + (2 * 15) + 4];
+                    depth._2._05 = depthMap[(i * 4 * 15) + (2 * 15) + 5];
+                    depth._2._06 = depthMap[(i * 4 * 15) + (2 * 15) + 6];
+                    depth._2._07 = depthMap[(i * 4 * 15) + (2 * 15) + 7];
+                    depth._2._08 = depthMap[(i * 4 * 15) + (2 * 15) + 8];
+                    depth._2._09 = depthMap[(i * 4 * 15) + (2 * 15) + 9];
+                    depth._2._10 = depthMap[(i * 4 * 15) + (2 * 15) + 10];
+                    depth._2._11 = depthMap[(i * 4 * 15) + (2 * 15) + 11];
+                    depth._2._12 = depthMap[(i * 4 * 15) + (2 * 15) + 12];
+                    depth._2._13 = depthMap[(i * 4 * 15) + (2 * 15) + 13];
+                    depth._2._14 = depthMap[(i * 4 * 15) + (2 * 15) + 14];
+
+                    depth._3._00 = depthMap[(i * 4 * 15) + (3 * 15) + 0];
+                    depth._3._01 = depthMap[(i * 4 * 15) + (3 * 15) + 1];
+                    depth._3._02 = depthMap[(i * 4 * 15) + (3 * 15) + 2];
+                    depth._3._03 = depthMap[(i * 4 * 15) + (3 * 15) + 3];
+                    depth._3._04 = depthMap[(i * 4 * 15) + (3 * 15) + 4];
+                    depth._3._05 = depthMap[(i * 4 * 15) + (3 * 15) + 5];
+                    depth._3._06 = depthMap[(i * 4 * 15) + (3 * 15) + 6];
+                    depth._3._07 = depthMap[(i * 4 * 15) + (3 * 15) + 7];
+                    depth._3._08 = depthMap[(i * 4 * 15) + (3 * 15) + 8];
+                    depth._3._09 = depthMap[(i * 4 * 15) + (3 * 15) + 9];
+                    depth._3._10 = depthMap[(i * 4 * 15) + (3 * 15) + 10];
+                    depth._3._11 = depthMap[(i * 4 * 15) + (3 * 15) + 11];
+                    depth._3._12 = depthMap[(i * 4 * 15) + (3 * 15) + 12];
+                    depth._3._13 = depthMap[(i * 4 * 15) + (3 * 15) + 13];
+                    depth._3._14 = depthMap[(i * 4 * 15) + (3 * 15) + 14];
                 }
             }
 
-            probeGen.vTetPositions = new Vector3[vTmpPositions.Count];
-            for (i = 0; i < vTmpPositions.Count; ++i)
-                probeGen.vTetPositions[i] = vTmpPositions[i];
+            {
+                if((oldTetDepthMap != null) && (oldTetDepthMap.Length == probeGen.vTetDepthMap.Length))
+                {
+                    int iSame = 0;
+                    for (int iTet = 0; iTet < oldTetDepthMap.Length; ++iTet)
+                    {
+                        if (!_prb_compareDepthMap(ref oldTetDepthMap[iTet], ref probeGen.vTetDepthMap[iTet]))
+                            break;
 
-            probeGen.vSHColors = new SHColor[vTmpSHColors.Count];
-            for (i = 0; i < vTmpSHColors.Count; ++i)
-                probeGen.vSHColors[i] = vTmpSHColors[i];
+                        ++iSame;
+                    }
 
-            uint[] uRawSubAdjIndices = new uint[iTetCount * 4];
-            TGGetTetAjacentIndices(uRawSubAdjIndices);
-            probeGen.vTetAdjIndices = _prb_uintsToInt4s(uRawSubAdjIndices);
+                    if (iSame >= oldTetDepthMap.Length)
+                        break;
+                }
 
-            float[] fRawSubBaryMatrices = new float[iTetCount * 4 * 3];
-            TGGetTetBaryMatrices(fRawSubBaryMatrices);
-            probeGen.vTetBaryMatrices = _prb_vector3sToVector43s(_floatsToVector3s(fRawSubBaryMatrices));
+                oldTetDepthMap = new TetDepthMap[probeGen.vTetDepthMap.Length];
+                for(int iTet = 0; iTet < oldTetDepthMap.Length; ++iTet)
+                    oldTetDepthMap[iTet] = probeGen.vTetDepthMap[iTet];
+            }
 
-            probeGen.vTetDepthMap = new TetDepthMap[iTetCount];
-        }
+            int iSubdivideCount = 0;
+            {
+                for (int iTet = 0; iTet < occludeMap.Length; ++iTet)
+                {
+                    if (occludeMap[iTet] == 0x00)
+                        continue;
+
+                    var vTet = new TGVector4x3();
+                    vTet.vectors = new Vector3[4];
+
+                    vTet.vectors[0] = probeGen.vTetPositions[probeGen.vTetIndices[iTet]._0];
+                    vTet.vectors[1] = probeGen.vTetPositions[probeGen.vTetIndices[iTet]._1];
+                    vTet.vectors[2] = probeGen.vTetPositions[probeGen.vTetIndices[iTet]._2];
+                    vTet.vectors[3] = probeGen.vTetPositions[probeGen.vTetIndices[iTet]._3];
+
+                    _subdivideTet(vTet);
+                    ++iSubdivideCount;
+                }
+            }
+
+            if (iSubdivideCount == 0)
+                break;
+        } while (true);
 
         DestroyImmediate(tmpObject);
-
-        for (int i = 0; i < probeFinderRendererList.Count; ++i)
-            probeFinderRendererList[i].enabled = bOldRendererVisible[i];
-
-        _updateLineList();
-    }
-
-    private void _fillDepthInfo()
-    {
-        { // init colliders
-            int iSubMeshCount = 0;
-            foreach (var iFilter in renderableMeshList)
-                iSubMeshCount += iFilter.sharedMesh.subMeshCount;
-            CDReserveColliderTable((uint)iSubMeshCount);
-
-            foreach (var iFilter in renderableMeshList)
-            {
-                for (int iSubMesh = 0; iSubMesh < iFilter.sharedMesh.subMeshCount; ++iSubMesh)
-                {
-                    var vertices = new Vector3[iFilter.sharedMesh.vertices.Length];
-                    for (int iIndex = 0; iIndex < vertices.Length; ++iIndex)
-                        vertices[iIndex] = iFilter.transform.TransformPoint(iFilter.sharedMesh.vertices[iIndex]);
-
-                    var indices = iFilter.sharedMesh.GetIndices(iSubMesh);
-                    var triangles = new float[indices.Length * 3];
-                    for (int iIndex = 0; iIndex < indices.Length; iIndex += 3)
-                    {
-                        var v0 = vertices[indices[iIndex + 0]];
-                        var v1 = vertices[indices[iIndex + 1]];
-                        var v2 = vertices[indices[iIndex + 2]];
-
-                        triangles[(iIndex + 0) * 3 + 0] = v0.x;
-                        triangles[(iIndex + 0) * 3 + 1] = v0.y;
-                        triangles[(iIndex + 0) * 3 + 2] = v0.z;
-
-                        triangles[(iIndex + 1) * 3 + 0] = v1.x;
-                        triangles[(iIndex + 1) * 3 + 1] = v1.y;
-                        triangles[(iIndex + 1) * 3 + 2] = v1.z;
-
-                        triangles[(iIndex + 2) * 3 + 0] = v2.x;
-                        triangles[(iIndex + 2) * 3 + 1] = v2.y;
-                        triangles[(iIndex + 2) * 3 + 2] = v2.z;
-                    }
-
-                    CDAddCollider(triangles, (uint)triangles.Length);
-                }
-            }
-        }
-
-        {
-            var vertices = new float[probeGen.vTetIndices.Length * 4 * 3];
-            var depthMap = new byte[probeGen.vTetDepthMap.Length * 4 * 15];
-
-            for (int i = 0; i < probeGen.vTetIndices.Length; ++i)
-            {
-                ref var vertex = ref probeGen.vTetIndices[i];
-
-                vertices[(i * 4 * 3) + (0 * 3) + 0] = probeGen.vTetPositions[vertex._0].x;
-                vertices[(i * 4 * 3) + (0 * 3) + 1] = probeGen.vTetPositions[vertex._0].y;
-                vertices[(i * 4 * 3) + (0 * 3) + 2] = probeGen.vTetPositions[vertex._0].z;
-
-                vertices[(i * 4 * 3) + (1 * 3) + 0] = probeGen.vTetPositions[vertex._1].x;
-                vertices[(i * 4 * 3) + (1 * 3) + 1] = probeGen.vTetPositions[vertex._1].y;
-                vertices[(i * 4 * 3) + (1 * 3) + 2] = probeGen.vTetPositions[vertex._1].z;
-
-                vertices[(i * 4 * 3) + (2 * 3) + 0] = probeGen.vTetPositions[vertex._2].x;
-                vertices[(i * 4 * 3) + (2 * 3) + 1] = probeGen.vTetPositions[vertex._2].y;
-                vertices[(i * 4 * 3) + (2 * 3) + 2] = probeGen.vTetPositions[vertex._2].z;
-
-                vertices[(i * 4 * 3) + (3 * 3) + 0] = probeGen.vTetPositions[vertex._3].x;
-                vertices[(i * 4 * 3) + (3 * 3) + 1] = probeGen.vTetPositions[vertex._3].y;
-                vertices[(i * 4 * 3) + (3 * 3) + 2] = probeGen.vTetPositions[vertex._3].z;
-            }
-
-            CDFillDepthInfo(vertices, depthMap, (uint)probeGen.vTetIndices.Length);
-
-            for (int i = 0; i < probeGen.vTetDepthMap.Length; ++i)
-            {
-                ref var depth = ref probeGen.vTetDepthMap[i];
-
-                depth._0._00 = depthMap[(i * 4 * 15) + (0 * 15) + 0];
-                depth._0._01 = depthMap[(i * 4 * 15) + (0 * 15) + 1];
-                depth._0._02 = depthMap[(i * 4 * 15) + (0 * 15) + 2];
-                depth._0._03 = depthMap[(i * 4 * 15) + (0 * 15) + 3];
-                depth._0._04 = depthMap[(i * 4 * 15) + (0 * 15) + 4];
-                depth._0._05 = depthMap[(i * 4 * 15) + (0 * 15) + 5];
-                depth._0._06 = depthMap[(i * 4 * 15) + (0 * 15) + 6];
-                depth._0._07 = depthMap[(i * 4 * 15) + (0 * 15) + 7];
-                depth._0._08 = depthMap[(i * 4 * 15) + (0 * 15) + 8];
-                depth._0._09 = depthMap[(i * 4 * 15) + (0 * 15) + 9];
-                depth._0._10 = depthMap[(i * 4 * 15) + (0 * 15) + 10];
-                depth._0._11 = depthMap[(i * 4 * 15) + (0 * 15) + 11];
-                depth._0._12 = depthMap[(i * 4 * 15) + (0 * 15) + 12];
-                depth._0._13 = depthMap[(i * 4 * 15) + (0 * 15) + 13];
-                depth._0._14 = depthMap[(i * 4 * 15) + (0 * 15) + 14];
-
-                depth._1._00 = depthMap[(i * 4 * 15) + (1 * 15) + 0];
-                depth._1._01 = depthMap[(i * 4 * 15) + (1 * 15) + 1];
-                depth._1._02 = depthMap[(i * 4 * 15) + (1 * 15) + 2];
-                depth._1._03 = depthMap[(i * 4 * 15) + (1 * 15) + 3];
-                depth._1._04 = depthMap[(i * 4 * 15) + (1 * 15) + 4];
-                depth._1._05 = depthMap[(i * 4 * 15) + (1 * 15) + 5];
-                depth._1._06 = depthMap[(i * 4 * 15) + (1 * 15) + 6];
-                depth._1._07 = depthMap[(i * 4 * 15) + (1 * 15) + 7];
-                depth._1._08 = depthMap[(i * 4 * 15) + (1 * 15) + 8];
-                depth._1._09 = depthMap[(i * 4 * 15) + (1 * 15) + 9];
-                depth._1._10 = depthMap[(i * 4 * 15) + (1 * 15) + 10];
-                depth._1._11 = depthMap[(i * 4 * 15) + (1 * 15) + 11];
-                depth._1._12 = depthMap[(i * 4 * 15) + (1 * 15) + 12];
-                depth._1._13 = depthMap[(i * 4 * 15) + (1 * 15) + 13];
-                depth._1._14 = depthMap[(i * 4 * 15) + (1 * 15) + 14];
-
-                depth._2._00 = depthMap[(i * 4 * 15) + (2 * 15) + 0];
-                depth._2._01 = depthMap[(i * 4 * 15) + (2 * 15) + 1];
-                depth._2._02 = depthMap[(i * 4 * 15) + (2 * 15) + 2];
-                depth._2._03 = depthMap[(i * 4 * 15) + (2 * 15) + 3];
-                depth._2._04 = depthMap[(i * 4 * 15) + (2 * 15) + 4];
-                depth._2._05 = depthMap[(i * 4 * 15) + (2 * 15) + 5];
-                depth._2._06 = depthMap[(i * 4 * 15) + (2 * 15) + 6];
-                depth._2._07 = depthMap[(i * 4 * 15) + (2 * 15) + 7];
-                depth._2._08 = depthMap[(i * 4 * 15) + (2 * 15) + 8];
-                depth._2._09 = depthMap[(i * 4 * 15) + (2 * 15) + 9];
-                depth._2._10 = depthMap[(i * 4 * 15) + (2 * 15) + 10];
-                depth._2._11 = depthMap[(i * 4 * 15) + (2 * 15) + 11];
-                depth._2._12 = depthMap[(i * 4 * 15) + (2 * 15) + 12];
-                depth._2._13 = depthMap[(i * 4 * 15) + (2 * 15) + 13];
-                depth._2._14 = depthMap[(i * 4 * 15) + (2 * 15) + 14];
-
-                depth._3._00 = depthMap[(i * 4 * 15) + (3 * 15) + 0];
-                depth._3._01 = depthMap[(i * 4 * 15) + (3 * 15) + 1];
-                depth._3._02 = depthMap[(i * 4 * 15) + (3 * 15) + 2];
-                depth._3._03 = depthMap[(i * 4 * 15) + (3 * 15) + 3];
-                depth._3._04 = depthMap[(i * 4 * 15) + (3 * 15) + 4];
-                depth._3._05 = depthMap[(i * 4 * 15) + (3 * 15) + 5];
-                depth._3._06 = depthMap[(i * 4 * 15) + (3 * 15) + 6];
-                depth._3._07 = depthMap[(i * 4 * 15) + (3 * 15) + 7];
-                depth._3._08 = depthMap[(i * 4 * 15) + (3 * 15) + 8];
-                depth._3._09 = depthMap[(i * 4 * 15) + (3 * 15) + 9];
-                depth._3._10 = depthMap[(i * 4 * 15) + (3 * 15) + 10];
-                depth._3._11 = depthMap[(i * 4 * 15) + (3 * 15) + 11];
-                depth._3._12 = depthMap[(i * 4 * 15) + (3 * 15) + 12];
-                depth._3._13 = depthMap[(i * 4 * 15) + (3 * 15) + 13];
-                depth._3._14 = depthMap[(i * 4 * 15) + (3 * 15) + 14];
-            }
-        }
     }
 
     private void _rebuildProbes()
     {
         _collectObjects();
+
+        var bOldRendererVisible = new bool[probeFinderRendererList.Count];
+        for (int i = 0; i < probeFinderRendererList.Count; ++i)
+        {
+            bOldRendererVisible[i] = probeFinderRendererList[i].enabled;
+            probeFinderRendererList[i].enabled = false;
+        }
+
         _generateTets();
-        _fillDepthInfo();
+
+        for (int i = 0; i < probeFinderRendererList.Count; ++i)
+            probeFinderRendererList[i].enabled = bOldRendererVisible[i];
+
+        _updateLineList();
 
         foreach (var probeFinder in probeFinderList)
             probeFinder.InitProbeFinder();

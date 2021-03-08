@@ -47,6 +47,7 @@ public class InfProbeGen : MonoBehaviour
     public Vector3 vAABBExtents = new Vector3(50, 50, 50);
 
     public float fMinVolume = 10.0f;
+    public float fMinSubVolume = 1.0f;
     public float fSHDiff = 0.1f;
 
     public TetInt4[] vTetIndices;
