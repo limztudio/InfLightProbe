@@ -285,55 +285,8 @@ public class InfProbeGenInspector : Editor
         return true;
     }
 
-    private static bool _prb_compareDepth(ref TetDepth vLhs, ref TetDepth vRhs)
-    {
-        if (vLhs._00 != vRhs._00)
-            return false;
-        if (vLhs._01 != vRhs._01)
-            return false;
-        if (vLhs._02 != vRhs._02)
-            return false;
-        if (vLhs._03 != vRhs._03)
-            return false;
-        if (vLhs._04 != vRhs._04)
-            return false;
-        if (vLhs._05 != vRhs._05)
-            return false;
-        if (vLhs._06 != vRhs._06)
-            return false;
-        if (vLhs._07 != vRhs._07)
-            return false;
-        if (vLhs._08 != vRhs._08)
-            return false;
-        if (vLhs._09 != vRhs._09)
-            return false;
-        if (vLhs._10 != vRhs._10)
-            return false;
-        if (vLhs._11 != vRhs._11)
-            return false;
-        if (vLhs._12 != vRhs._12)
-            return false;
-        if (vLhs._13 != vRhs._13)
-            return false;
-        if (vLhs._14 != vRhs._14)
-            return false;
-        return true;
-    }
-    private static bool _prb_compareDepthMap(ref TetDepthMap vLhs, ref TetDepthMap vRhs)
-    {
-        if (!_prb_compareDepth(ref vLhs._0, ref vRhs._0))
-            return false;
-        if (!_prb_compareDepth(ref vLhs._1, ref vRhs._1))
-            return false;
-        if (!_prb_compareDepth(ref vLhs._2, ref vRhs._2))
-            return false;
-        if (!_prb_compareDepth(ref vLhs._3, ref vRhs._3))
-            return false;
-        return true;
-    }
 
-
-        private void _pushRenderTet(TGVector4x3 vTet)
+    private void _pushRenderTet(TGVector4x3 vTet)
     {
         renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[1]));
         renderLines.Add(new TGRenderLine(vTet.vectors[0], vTet.vectors[2]));
@@ -830,7 +783,7 @@ public class InfProbeGenInspector : Editor
             }
         }
 
-        TetDepthMap[] oldTetDepthMap = null;
+        int oldTetCount = -1;
         do {
             {
                 Vector3[] vSubVertices = new Vector3[cachedSubPositions.Count];
@@ -1074,24 +1027,12 @@ public class InfProbeGenInspector : Editor
             }
 
             {
-                if((oldTetDepthMap != null) && (oldTetDepthMap.Length == probeGen.vTetDepthMap.Length))
+                if (oldTetCount >= 0)
                 {
-                    int iSame = 0;
-                    for (int iTet = 0; iTet < oldTetDepthMap.Length; ++iTet)
-                    {
-                        if (!_prb_compareDepthMap(ref oldTetDepthMap[iTet], ref probeGen.vTetDepthMap[iTet]))
-                            break;
-
-                        ++iSame;
-                    }
-
-                    if (iSame >= oldTetDepthMap.Length)
+                    if (oldTetCount == probeGen.vTetIndices.Length)
                         break;
                 }
-
-                oldTetDepthMap = new TetDepthMap[probeGen.vTetDepthMap.Length];
-                for(int iTet = 0; iTet < oldTetDepthMap.Length; ++iTet)
-                    oldTetDepthMap[iTet] = probeGen.vTetDepthMap[iTet];
+                oldTetCount = probeGen.vTetIndices.Length;
             }
 
             int iSubdivideCount = 0;
