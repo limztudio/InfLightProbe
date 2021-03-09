@@ -24,6 +24,7 @@ public class InfProbeFinder : MonoBehaviour
 
     private Vector3 vOldPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 
+    public bool bProbeLost = true;
     public int iLastProbe = 0;
     public SHShaderColor shColor;
     public TetInt4 vProbeSelected;
@@ -229,12 +230,14 @@ public class InfProbeFinder : MonoBehaviour
             int iNextProbe = ToIndex(ref probeGen.vTetAdjIndices[iLastProbe], iMin);
             if (iNextProbe == -1)
             { // do extrapolation
-                // seems on Unity:
-                // find closest face from tetrahedron
-                // straight down a line from object position which is perpendicular with the face
-                // find intersection point with the line and the face
-                // use barycentric coordinate of the point on the face
-                // depending on the weight of 3, calculate SH colours
+              // seems on Unity:
+              // find closest face from tetrahedron
+              // straight down a line from object position which is perpendicular with the face
+              // find intersection point with the line and the face
+              // use barycentric coordinate of the point on the face
+              // depending on the weight of 3, calculate SH colours
+
+                bProbeLost = true;
             }
             else
             {
@@ -252,11 +255,11 @@ public class InfProbeFinder : MonoBehaviour
             var vTetVertex2 = probeGen.vTetPositions[vTetVertexIndices._2];
             var vTetVertex3 = probeGen.vTetPositions[vTetVertexIndices._3];
 
-            var fWeights = new float[4];
             var fWeightsWithDepth = new float[4];
-
-            var fTotalWeight = 0.0f;
             var fTotalWeightWithDepth = 0.0f;
+
+            float fClosestDist;
+            int iClosestProbe;
 
             vProbeVisibility = new TetBool4();
 
@@ -266,18 +269,20 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex1, vTetVertex2, vTetVertex3, vTetVertex0, vCurPos, out fLineDepth, out fFaceNormalLength);
                 var vBary = MakeBaryCoord(vTetVertex1, vTetVertex2, vTetVertex3, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._0, vBary);
+                var fDist = (vTetVertex0 - vCurPos).magnitude;
 
-                fWeights[0] = (vTetVertex0 - vP).magnitude;
-                fTotalWeight += fWeights[0];
+                fClosestDist = fDist;
+                iClosestProbe = 0;
 
-                if (fLineDepth > fCachedDepth) {
+                if (fLineDepth > fCachedDepth)
+                {
                     vProbeVisibility._0 = false;
                     fWeightsWithDepth[0] = 0.0f;
                 }
                 else
                 {
                     vProbeVisibility._0 = true;
-                    fWeightsWithDepth[0] = fWeights[0];
+                    fWeightsWithDepth[0] = fDist;
                     fTotalWeightWithDepth += fWeightsWithDepth[0];
                 }
             }
@@ -288,9 +293,13 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex0, vTetVertex2, vTetVertex3, vTetVertex1, vCurPos, out fLineDepth, out fFaceNormalLength);
                 var vBary = MakeBaryCoord(vTetVertex0, vTetVertex2, vTetVertex3, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._1, vBary);
+                var fDist = (vTetVertex1 - vCurPos).magnitude;
 
-                fWeights[1] = (vTetVertex1 - vP).magnitude;
-                fTotalWeight += fWeights[1];
+                if(fClosestDist > fDist)
+                {
+                    fClosestDist = fDist;
+                    iClosestProbe = 1;
+                }
 
                 if (fLineDepth > fCachedDepth)
                 {
@@ -300,7 +309,7 @@ public class InfProbeFinder : MonoBehaviour
                 else
                 {
                     vProbeVisibility._1 = true;
-                    fWeightsWithDepth[1] = fWeights[1];
+                    fWeightsWithDepth[1] = fDist;
                     fTotalWeightWithDepth += fWeightsWithDepth[1];
                 }
             }
@@ -311,9 +320,13 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex0, vTetVertex1, vTetVertex3, vTetVertex2, vCurPos, out fLineDepth, out fFaceNormalLength);
                 var vBary = MakeBaryCoord(vTetVertex0, vTetVertex1, vTetVertex3, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._2, vBary);
+                var fDist = (vTetVertex2 - vCurPos).magnitude;
 
-                fWeights[2] = (vTetVertex2 - vP).magnitude;
-                fTotalWeight += fWeights[2];
+                if (fClosestDist > fDist)
+                {
+                    fClosestDist = fDist;
+                    iClosestProbe = 2;
+                }
 
                 if (fLineDepth > fCachedDepth)
                 {
@@ -323,7 +336,7 @@ public class InfProbeFinder : MonoBehaviour
                 else
                 {
                     vProbeVisibility._2 = true;
-                    fWeightsWithDepth[2] = fWeights[2];
+                    fWeightsWithDepth[2] = fDist;
                     fTotalWeightWithDepth += fWeightsWithDepth[2];
                 }
             }
@@ -334,9 +347,13 @@ public class InfProbeFinder : MonoBehaviour
                 var vP = IntersectPointWithFace(vTetVertex0, vTetVertex1, vTetVertex2, vTetVertex3, vCurPos, out fLineDepth, out fFaceNormalLength);
                 var vBary = MakeBaryCoord(vTetVertex0, vTetVertex1, vTetVertex2, vP, 1.0f / fFaceNormalLength);
                 var fCachedDepth = GetFaceDepthOnPoint(vTetDepthMap._3, vBary);
+                var fDist = (vTetVertex3 - vCurPos).magnitude;
 
-                fWeights[3] = (vTetVertex3 - vP).magnitude;
-                fTotalWeight += fWeights[3];
+                if (fClosestDist > fDist)
+                {
+                    fClosestDist = fDist;
+                    iClosestProbe = 3;
+                }
 
                 if (fLineDepth > fCachedDepth)
                 {
@@ -346,21 +363,29 @@ public class InfProbeFinder : MonoBehaviour
                 else
                 {
                     vProbeVisibility._3 = true;
-                    fWeightsWithDepth[3] = fWeights[3];
+                    fWeightsWithDepth[3] = fDist;
                     fTotalWeightWithDepth += fWeightsWithDepth[3];
                 }
             }
 
-            var shTmpColorAcc = new SHColor();
-            shTmpColorAcc.SH = new Vector3[] {
-                Vector3.zero, Vector3.zero, Vector3.zero,
-                Vector3.zero, Vector3.zero, Vector3.zero,
-                Vector3.zero, Vector3.zero, Vector3.zero
-            };
-
-            do
+            vProbeSelected = new TetInt4();
             {
-                if (fTotalWeightWithDepth > 0.0f)
+                vProbeSelected._0 = probeGen.vTetIndices[iLastProbe]._0;
+                vProbeSelected._1 = probeGen.vTetIndices[iLastProbe]._1;
+                vProbeSelected._2 = probeGen.vTetIndices[iLastProbe]._2;
+                vProbeSelected._3 = probeGen.vTetIndices[iLastProbe]._3;
+            }
+
+            if (fTotalWeightWithDepth > 0.0f)
+            {
+                var shTmpColorAcc = new SHColor();
+                shTmpColorAcc.SH = new Vector3[] {
+                    Vector3.zero, Vector3.zero, Vector3.zero,
+                    Vector3.zero, Vector3.zero, Vector3.zero,
+                    Vector3.zero, Vector3.zero, Vector3.zero
+                };
+
+                do
                 {
                     {
                         fWeightsWithDepth[0] = (fWeightsWithDepth[0] > 0.0001f) ? (fTotalWeightWithDepth / fWeightsWithDepth[0]) : 0.0f;
@@ -424,124 +449,118 @@ public class InfProbeFinder : MonoBehaviour
                         for (int i = 0; i < 9; ++i)
                             shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i] * fWeightsWithDepth[3];
                     }
-                }
-                else
+                } while (false);
+
+                shColor = new SHShaderColor();
                 {
-                    {
-                        fWeights[0] = (fWeights[0] > 0.0001f) ? (fTotalWeight / fWeights[0]) : 0.0f;
-                        fWeights[1] = (fWeights[1] > 0.0001f) ? (fTotalWeight / fWeights[1]) : 0.0f;
-                        fWeights[2] = (fWeights[2] > 0.0001f) ? (fTotalWeight / fWeights[2]) : 0.0f;
-                        fWeights[3] = (fWeights[3] > 0.0001f) ? (fTotalWeight / fWeights[3]) : 0.0f;
-
-                        fTotalWeight = fWeights[0] + fWeights[1] + fWeights[2] + fWeights[3];
-                        fTotalWeight = 1.0f / fTotalWeight;
-
-                        fWeights[0] *= fTotalWeightWithDepth;
-                        fWeights[1] *= fTotalWeightWithDepth;
-                        fWeights[2] *= fTotalWeightWithDepth;
-                        fWeights[3] *= fTotalWeightWithDepth;
-                    }
-
-                    if (fWeights[0] > 0.9998f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i];
-                        break;
-                    }
-                    else if (fWeights[0] > 0.0001f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0].SH[i] * fWeights[0];
-                    }
-
-                    if (fWeights[1] > 0.9998f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i];
-                        break;
-                    }
-                    else if (fWeights[1] > 0.0001f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1].SH[i] * fWeights[1];
-                    }
-
-                    if (fWeights[2] > 0.9998f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i];
-                        break;
-                    }
-                    else if (fWeights[2] > 0.0001f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2].SH[i] * fWeights[2];
-                    }
-
-                    if (fWeights[3] > 0.9998f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i];
-                        break;
-                    }
-                    else if (fWeights[3] > 0.0001f)
-                    {
-                        for (int i = 0; i < 9; ++i)
-                            shTmpColorAcc.SH[i] += probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3].SH[i] * fWeights[3];
-                    }
+                    shColor.vBand0Base0RGB =
+                        shTmpColorAcc.SH[0] * (0.282094791773878140f) +
+                        shTmpColorAcc.SH[6] * (-0.315391565252520050f)
+                        ;
+                    shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R = new Vector4(
+                        shTmpColorAcc.SH[1].x * (-0.488602511902919920f),
+                        shTmpColorAcc.SH[2].x * (0.488602511902919920f),
+                        shTmpColorAcc.SH[3].x * (-0.488602511902919920f),
+                        shTmpColorAcc.SH[4].x * (0.546274215296039590f)
+                        );
+                    shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G = new Vector4(
+                        shTmpColorAcc.SH[1].y * (-0.488602511902919920f),
+                        shTmpColorAcc.SH[2].y * (0.488602511902919920f),
+                        shTmpColorAcc.SH[3].y * (-0.488602511902919920f),
+                        shTmpColorAcc.SH[4].y * (0.546274215296039590f)
+                        );
+                    shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B = new Vector4(
+                        shTmpColorAcc.SH[1].z * (-0.488602511902919920f),
+                        shTmpColorAcc.SH[2].z * (0.488602511902919920f),
+                        shTmpColorAcc.SH[3].z * (-0.488602511902919920f),
+                        shTmpColorAcc.SH[4].z * (0.546274215296039590f)
+                        );
+                    shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R = new Vector4(
+                        shTmpColorAcc.SH[5].x * (-1.092548430592079200f),
+                        shTmpColorAcc.SH[6].x * (0.946174695757560080f),
+                        shTmpColorAcc.SH[7].x * (-1.092548430592079200f),
+                        shTmpColorAcc.SH[8].x * (0.546274215296039590f)
+                        );
+                    shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G = new Vector4(
+                        shTmpColorAcc.SH[5].y * (-1.092548430592079200f),
+                        shTmpColorAcc.SH[6].y * (0.946174695757560080f),
+                        shTmpColorAcc.SH[7].y * (-1.092548430592079200f),
+                        shTmpColorAcc.SH[8].y * (0.546274215296039590f)
+                        );
+                    shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B = new Vector4(
+                        shTmpColorAcc.SH[5].z * (-1.092548430592079200f),
+                        shTmpColorAcc.SH[6].z * (0.946174695757560080f),
+                        shTmpColorAcc.SH[7].z * (-1.092548430592079200f),
+                        shTmpColorAcc.SH[8].z * (0.546274215296039590f)
+                        );
                 }
-            } while (false);
 
-            vProbeSelected = new TetInt4();
-            {
-                vProbeSelected._0 = probeGen.vTetIndices[iLastProbe]._0;
-                vProbeSelected._1 = probeGen.vTetIndices[iLastProbe]._1;
-                vProbeSelected._2 = probeGen.vTetIndices[iLastProbe]._2;
-                vProbeSelected._3 = probeGen.vTetIndices[iLastProbe]._3;
+                bProbeLost = false;
             }
-
-            shColor = new SHShaderColor();
+            else if(!bProbeLost)
             {
-                shColor.vBand0Base0RGB =
-                    shTmpColorAcc.SH[0] * (0.282094791773878140f) +
-                    shTmpColorAcc.SH[6] * (-0.315391565252520050f)
-                    ;
-                shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R = new Vector4(
-                    shTmpColorAcc.SH[1].x * (-0.488602511902919920f),
-                    shTmpColorAcc.SH[2].x * (0.488602511902919920f),
-                    shTmpColorAcc.SH[3].x * (-0.488602511902919920f),
-                    shTmpColorAcc.SH[4].x * (0.546274215296039590f)
-                    );
-                shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G = new Vector4(
-                    shTmpColorAcc.SH[1].y * (-0.488602511902919920f),
-                    shTmpColorAcc.SH[2].y * (0.488602511902919920f),
-                    shTmpColorAcc.SH[3].y * (-0.488602511902919920f),
-                    shTmpColorAcc.SH[4].y * (0.546274215296039590f)
-                    );
-                shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B = new Vector4(
-                    shTmpColorAcc.SH[1].z * (-0.488602511902919920f),
-                    shTmpColorAcc.SH[2].z * (0.488602511902919920f),
-                    shTmpColorAcc.SH[3].z * (-0.488602511902919920f),
-                    shTmpColorAcc.SH[4].z * (0.546274215296039590f)
-                    );
-                shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R = new Vector4(
-                    shTmpColorAcc.SH[5].x * (-1.092548430592079200f),
-                    shTmpColorAcc.SH[6].x * (0.946174695757560080f),
-                    shTmpColorAcc.SH[7].x * (-1.092548430592079200f),
-                    shTmpColorAcc.SH[8].x * (0.546274215296039590f)
-                    );
-                shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G = new Vector4(
-                    shTmpColorAcc.SH[5].y * (-1.092548430592079200f),
-                    shTmpColorAcc.SH[6].y * (0.946174695757560080f),
-                    shTmpColorAcc.SH[7].y * (-1.092548430592079200f),
-                    shTmpColorAcc.SH[8].y * (0.546274215296039590f)
-                    );
-                shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B = new Vector4(
-                    shTmpColorAcc.SH[5].z * (-1.092548430592079200f),
-                    shTmpColorAcc.SH[6].z * (0.946174695757560080f),
-                    shTmpColorAcc.SH[7].z * (-1.092548430592079200f),
-                    shTmpColorAcc.SH[8].z * (0.546274215296039590f)
-                    );
+                shColor = new SHShaderColor();
+                {
+                    SHColor shTmpColor;
+                    switch (iClosestProbe)
+                    {
+                        case 1:
+                            shTmpColor = probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._1];
+                            break;
+                        case 2:
+                            shTmpColor = probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._2];
+                            break;
+                        case 3:
+                            shTmpColor = probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._3];
+                            break;
+                        default:
+                            shTmpColor = probeGen.vSHColors[probeGen.vTetIndices[iLastProbe]._0];
+                            break;
+                    }
+
+                    shColor.vBand0Base0RGB =
+                        shTmpColor.SH[0] * (0.282094791773878140f) +
+                        shTmpColor.SH[6] * (-0.315391565252520050f)
+                        ;
+                    shColor.vBand1Base0R_Band1Base1R_Band1Base2R_Band2Base0R = new Vector4(
+                        shTmpColor.SH[1].x * (-0.488602511902919920f),
+                        shTmpColor.SH[2].x * (0.488602511902919920f),
+                        shTmpColor.SH[3].x * (-0.488602511902919920f),
+                        shTmpColor.SH[4].x * (0.546274215296039590f)
+                        );
+                    shColor.vBand1Base0G_Band1Base1G_Band1Base2G_Band2Base0G = new Vector4(
+                        shTmpColor.SH[1].y * (-0.488602511902919920f),
+                        shTmpColor.SH[2].y * (0.488602511902919920f),
+                        shTmpColor.SH[3].y * (-0.488602511902919920f),
+                        shTmpColor.SH[4].y * (0.546274215296039590f)
+                        );
+                    shColor.vBand1Base0B_Band1Base1B_Band1Base2B_Band2Base0B = new Vector4(
+                        shTmpColor.SH[1].z * (-0.488602511902919920f),
+                        shTmpColor.SH[2].z * (0.488602511902919920f),
+                        shTmpColor.SH[3].z * (-0.488602511902919920f),
+                        shTmpColor.SH[4].z * (0.546274215296039590f)
+                        );
+                    shColor.vBand2Base1R_Band2Base2R_Band2Base3R_Band2Base4R = new Vector4(
+                        shTmpColor.SH[5].x * (-1.092548430592079200f),
+                        shTmpColor.SH[6].x * (0.946174695757560080f),
+                        shTmpColor.SH[7].x * (-1.092548430592079200f),
+                        shTmpColor.SH[8].x * (0.546274215296039590f)
+                        );
+                    shColor.vBand2Base1G_Band2Base2G_Band2Base3G_Band2Base4G = new Vector4(
+                        shTmpColor.SH[5].y * (-1.092548430592079200f),
+                        shTmpColor.SH[6].y * (0.946174695757560080f),
+                        shTmpColor.SH[7].y * (-1.092548430592079200f),
+                        shTmpColor.SH[8].y * (0.546274215296039590f)
+                        );
+                    shColor.vBand2Base1B_Band2Base2B_Band2Base3B_Band2Base4B = new Vector4(
+                        shTmpColor.SH[5].z * (-1.092548430592079200f),
+                        shTmpColor.SH[6].z * (0.946174695757560080f),
+                        shTmpColor.SH[7].z * (-1.092548430592079200f),
+                        shTmpColor.SH[8].z * (0.546274215296039590f)
+                        );
+                }
+
+                bProbeLost = false;
             }
         }
     }
@@ -550,6 +569,7 @@ public class InfProbeFinder : MonoBehaviour
         probeGen = objProbeGen.GetComponent<InfProbeGen>();
         material = transform.GetComponent<Renderer>().sharedMaterial;
         iLastProbe = 0;
+        bProbeLost = true;
         vOldPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 
         UpdateProbe();
