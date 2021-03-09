@@ -90,6 +90,8 @@ public class InfProbeGenInspector : Editor
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGGetTetBaryMatrices(float[] vOut);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void TGSliceTet(float[] vInputTet, float[] vOutTets, byte cFlag);
+    [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGSubdivideTet(float[] vInputTet, float[] vOutTets, float[] vOutOct);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGSubdivideOct(float[] vInputOct, float[] vOutTets, float[] vOutOcts);
@@ -456,93 +458,20 @@ public class InfProbeGenInspector : Editor
 
         if(iCount == 2)
         {
-            TGVector4x3[] vSubTets = new TGVector4x3[2];
-            vSubTets[0].vectors = new Vector3[4];
-            vSubTets[1].vectors = new Vector3[4];
+            TGVector4x3[] vSubTets;
+            {
+                TGVector4x3[] vInputTets = new TGVector4x3[1];
+                vInputTets[0] = vParentTet;
 
-            if (((cFlag & 0x01) != 0) && ((cFlag & 0x02) != 0))
-            { // 0, 1
-                var vM = Vector3.Lerp(vParentTet.vectors[0], vParentTet.vectors[1], 0.5f);
+                float[] fSubTetVertices = new float[2 * 4 * 3];
 
-                vSubTets[0].vectors[0] = vParentTet.vectors[0];
-                vSubTets[0].vectors[1] = vM;
-                vSubTets[0].vectors[2] = vParentTet.vectors[2];
-                vSubTets[0].vectors[3] = vParentTet.vectors[3];
+                TGSliceTet(
+                    _vector3sToFloats(_vector43sToVector3s(vInputTets)),
+                    fSubTetVertices,
+                    cFlag
+                    );
 
-                vSubTets[1].vectors[0] = vParentTet.vectors[1];
-                vSubTets[1].vectors[1] = vM;
-                vSubTets[1].vectors[2] = vParentTet.vectors[2];
-                vSubTets[1].vectors[3] = vParentTet.vectors[3];
-            }
-            else if (((cFlag & 0x01) != 0) && ((cFlag & 0x04) != 0))
-            { // 0, 2
-                var vM = Vector3.Lerp(vParentTet.vectors[0], vParentTet.vectors[2], 0.5f);
-
-                vSubTets[0].vectors[0] = vParentTet.vectors[0];
-                vSubTets[0].vectors[1] = vM;
-                vSubTets[0].vectors[2] = vParentTet.vectors[1];
-                vSubTets[0].vectors[3] = vParentTet.vectors[3];
-
-                vSubTets[1].vectors[0] = vParentTet.vectors[2];
-                vSubTets[1].vectors[1] = vM;
-                vSubTets[1].vectors[2] = vParentTet.vectors[1];
-                vSubTets[1].vectors[3] = vParentTet.vectors[3];
-            }
-            else if (((cFlag & 0x01) != 0) && ((cFlag & 0x08) != 0))
-            { // 0, 3
-                var vM = Vector3.Lerp(vParentTet.vectors[0], vParentTet.vectors[3], 0.5f);
-
-                vSubTets[0].vectors[0] = vParentTet.vectors[0];
-                vSubTets[0].vectors[1] = vM;
-                vSubTets[0].vectors[2] = vParentTet.vectors[1];
-                vSubTets[0].vectors[3] = vParentTet.vectors[2];
-
-                vSubTets[1].vectors[0] = vParentTet.vectors[3];
-                vSubTets[1].vectors[1] = vM;
-                vSubTets[1].vectors[2] = vParentTet.vectors[1];
-                vSubTets[1].vectors[3] = vParentTet.vectors[2];
-            }
-            else if (((cFlag & 0x02) != 0) && ((cFlag & 0x04) != 0))
-            { // 1, 2
-                var vM = Vector3.Lerp(vParentTet.vectors[1], vParentTet.vectors[2], 0.5f);
-
-                vSubTets[0].vectors[0] = vParentTet.vectors[0];
-                vSubTets[0].vectors[1] = vM;
-                vSubTets[0].vectors[2] = vParentTet.vectors[1];
-                vSubTets[0].vectors[3] = vParentTet.vectors[3];
-
-                vSubTets[1].vectors[0] = vParentTet.vectors[0];
-                vSubTets[1].vectors[1] = vM;
-                vSubTets[1].vectors[2] = vParentTet.vectors[2];
-                vSubTets[1].vectors[3] = vParentTet.vectors[3];
-            }
-            else if (((cFlag & 0x02) != 0) && ((cFlag & 0x08) != 0))
-            { // 1, 3
-                var vM = Vector3.Lerp(vParentTet.vectors[1], vParentTet.vectors[3], 0.5f);
-
-                vSubTets[0].vectors[0] = vParentTet.vectors[0];
-                vSubTets[0].vectors[1] = vM;
-                vSubTets[0].vectors[2] = vParentTet.vectors[1];
-                vSubTets[0].vectors[3] = vParentTet.vectors[2];
-
-                vSubTets[1].vectors[0] = vParentTet.vectors[0];
-                vSubTets[1].vectors[1] = vM;
-                vSubTets[1].vectors[2] = vParentTet.vectors[2];
-                vSubTets[1].vectors[3] = vParentTet.vectors[3];
-            }
-            else if (((cFlag & 0x04) != 0) && ((cFlag & 0x08) != 0))
-            { // 2, 3
-                var vM = Vector3.Lerp(vParentTet.vectors[2], vParentTet.vectors[3], 0.5f);
-
-                vSubTets[0].vectors[0] = vParentTet.vectors[0];
-                vSubTets[0].vectors[1] = vM;
-                vSubTets[0].vectors[2] = vParentTet.vectors[1];
-                vSubTets[0].vectors[3] = vParentTet.vectors[3];
-
-                vSubTets[1].vectors[0] = vParentTet.vectors[0];
-                vSubTets[1].vectors[1] = vM;
-                vSubTets[1].vectors[2] = vParentTet.vectors[1];
-                vSubTets[1].vectors[3] = vParentTet.vectors[2];
+                vSubTets = _vector3sToVector43s(_floatsToVector3s(fSubTetVertices));
             }
 
             foreach (var vSubTet in vSubTets)
