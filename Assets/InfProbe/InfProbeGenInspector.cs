@@ -440,48 +440,165 @@ public class InfProbeGenInspector : Editor
     }
 
     private void _subdivideTet(
-        TGVector4x3 vParentTet
+        TGVector4x3 vParentTet,
+        byte cFlag
         )
     {
-        TGVector4x3[] vSubTets;
-        TGVector6x3[] vSubOcts;
+        int iCount = 0;
+        if ((cFlag & 0x01) != 0)
+            ++iCount;
+        if ((cFlag & 0x02) != 0)
+            ++iCount;
+        if ((cFlag & 0x04) != 0)
+            ++iCount;
+        if ((cFlag & 0x08) != 0)
+            ++iCount;
+
+        if(iCount == 2)
         {
-            TGVector4x3[] vInputTets = new TGVector4x3[1];
-            vInputTets[0] = vParentTet;
+            TGVector4x3[] vSubTets = new TGVector4x3[2];
+            vSubTets[0].vectors = new Vector3[4];
+            vSubTets[1].vectors = new Vector3[4];
 
-            float[] fSubTetVertices = new float[4 * 4 * 3];
-            float[] fSubOctVertices = new float[1 * 6 * 3];
+            if (((cFlag & 0x01) != 0) && ((cFlag & 0x02) != 0))
+            { // 0, 1
+                var vM = Vector3.Lerp(vParentTet.vectors[0], vParentTet.vectors[1], 0.5f);
 
-            TGSubdivideTet(
-                _vector3sToFloats(_vector43sToVector3s(vInputTets)),
-                fSubTetVertices,
-                fSubOctVertices
-                );
+                vSubTets[0].vectors[0] = vParentTet.vectors[0];
+                vSubTets[0].vectors[1] = vM;
+                vSubTets[0].vectors[2] = vParentTet.vectors[2];
+                vSubTets[0].vectors[3] = vParentTet.vectors[3];
 
-            vSubTets = _vector3sToVector43s(_floatsToVector3s(fSubTetVertices));
-            vSubOcts = _vector3sToVector63s(_floatsToVector3s(fSubOctVertices));
-        }
+                vSubTets[1].vectors[0] = vParentTet.vectors[1];
+                vSubTets[1].vectors[1] = vM;
+                vSubTets[1].vectors[2] = vParentTet.vectors[2];
+                vSubTets[1].vectors[3] = vParentTet.vectors[3];
+            }
+            else if (((cFlag & 0x01) != 0) && ((cFlag & 0x04) != 0))
+            { // 0, 2
+                var vM = Vector3.Lerp(vParentTet.vectors[0], vParentTet.vectors[2], 0.5f);
 
-        foreach (var vSubTet in vSubTets)
-        {
-            TGVector4x3[] vInputTets = new TGVector4x3[1];
-            vInputTets[0] = vSubTet;
-            var fComp = TGGetTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
-            if (fComp > probeGen.fMinSubVolume)
+                vSubTets[0].vectors[0] = vParentTet.vectors[0];
+                vSubTets[0].vectors[1] = vM;
+                vSubTets[0].vectors[2] = vParentTet.vectors[1];
+                vSubTets[0].vectors[3] = vParentTet.vectors[3];
+
+                vSubTets[1].vectors[0] = vParentTet.vectors[2];
+                vSubTets[1].vectors[1] = vM;
+                vSubTets[1].vectors[2] = vParentTet.vectors[1];
+                vSubTets[1].vectors[3] = vParentTet.vectors[3];
+            }
+            else if (((cFlag & 0x01) != 0) && ((cFlag & 0x08) != 0))
+            { // 0, 3
+                var vM = Vector3.Lerp(vParentTet.vectors[0], vParentTet.vectors[3], 0.5f);
+
+                vSubTets[0].vectors[0] = vParentTet.vectors[0];
+                vSubTets[0].vectors[1] = vM;
+                vSubTets[0].vectors[2] = vParentTet.vectors[1];
+                vSubTets[0].vectors[3] = vParentTet.vectors[2];
+
+                vSubTets[1].vectors[0] = vParentTet.vectors[3];
+                vSubTets[1].vectors[1] = vM;
+                vSubTets[1].vectors[2] = vParentTet.vectors[1];
+                vSubTets[1].vectors[3] = vParentTet.vectors[2];
+            }
+            else if (((cFlag & 0x02) != 0) && ((cFlag & 0x04) != 0))
+            { // 1, 2
+                var vM = Vector3.Lerp(vParentTet.vectors[1], vParentTet.vectors[2], 0.5f);
+
+                vSubTets[0].vectors[0] = vParentTet.vectors[0];
+                vSubTets[0].vectors[1] = vM;
+                vSubTets[0].vectors[2] = vParentTet.vectors[1];
+                vSubTets[0].vectors[3] = vParentTet.vectors[3];
+
+                vSubTets[1].vectors[0] = vParentTet.vectors[0];
+                vSubTets[1].vectors[1] = vM;
+                vSubTets[1].vectors[2] = vParentTet.vectors[2];
+                vSubTets[1].vectors[3] = vParentTet.vectors[3];
+            }
+            else if (((cFlag & 0x02) != 0) && ((cFlag & 0x08) != 0))
+            { // 1, 3
+                var vM = Vector3.Lerp(vParentTet.vectors[1], vParentTet.vectors[3], 0.5f);
+
+                vSubTets[0].vectors[0] = vParentTet.vectors[0];
+                vSubTets[0].vectors[1] = vM;
+                vSubTets[0].vectors[2] = vParentTet.vectors[1];
+                vSubTets[0].vectors[3] = vParentTet.vectors[2];
+
+                vSubTets[1].vectors[0] = vParentTet.vectors[0];
+                vSubTets[1].vectors[1] = vM;
+                vSubTets[1].vectors[2] = vParentTet.vectors[2];
+                vSubTets[1].vectors[3] = vParentTet.vectors[3];
+            }
+            else if (((cFlag & 0x04) != 0) && ((cFlag & 0x08) != 0))
+            { // 2, 3
+                var vM = Vector3.Lerp(vParentTet.vectors[2], vParentTet.vectors[3], 0.5f);
+
+                vSubTets[0].vectors[0] = vParentTet.vectors[0];
+                vSubTets[0].vectors[1] = vM;
+                vSubTets[0].vectors[2] = vParentTet.vectors[1];
+                vSubTets[0].vectors[3] = vParentTet.vectors[3];
+
+                vSubTets[1].vectors[0] = vParentTet.vectors[0];
+                vSubTets[1].vectors[1] = vM;
+                vSubTets[1].vectors[2] = vParentTet.vectors[1];
+                vSubTets[1].vectors[3] = vParentTet.vectors[2];
+            }
+
+            foreach (var vSubTet in vSubTets)
             {
-                foreach (var vPos in vSubTet.vectors)
-                    cachedSubPositions.Add(vPos);
+                TGVector4x3[] vInputTets = new TGVector4x3[1];
+                vInputTets[0] = vSubTet;
+                var fComp = TGGetTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+                if (fComp > probeGen.fMinSubVolume)
+                {
+                    foreach (var vPos in vSubTet.vectors)
+                        cachedSubPositions.Add(vPos);
+                }
             }
         }
-        foreach (var vSubOct in vSubOcts)
+        else
         {
-            TGVector6x3[] vInputOcts = new TGVector6x3[1];
-            vInputOcts[0] = vSubOct;
-            var fComp = TGGetOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
-            if (fComp > probeGen.fMinSubVolume)
+            TGVector4x3[] vSubTets;
+            TGVector6x3[] vSubOcts;
             {
-                foreach (var vPos in vSubOct.vectors)
-                    cachedSubPositions.Add(vPos);
+                TGVector4x3[] vInputTets = new TGVector4x3[1];
+                vInputTets[0] = vParentTet;
+
+                float[] fSubTetVertices = new float[4 * 4 * 3];
+                float[] fSubOctVertices = new float[1 * 6 * 3];
+
+                TGSubdivideTet(
+                    _vector3sToFloats(_vector43sToVector3s(vInputTets)),
+                    fSubTetVertices,
+                    fSubOctVertices
+                    );
+
+                vSubTets = _vector3sToVector43s(_floatsToVector3s(fSubTetVertices));
+                vSubOcts = _vector3sToVector63s(_floatsToVector3s(fSubOctVertices));
+            }
+
+            foreach (var vSubTet in vSubTets)
+            {
+                TGVector4x3[] vInputTets = new TGVector4x3[1];
+                vInputTets[0] = vSubTet;
+                var fComp = TGGetTetVolume(_vector3sToFloats(_vector43sToVector3s(vInputTets)));
+                if (fComp > probeGen.fMinSubVolume)
+                {
+                    foreach (var vPos in vSubTet.vectors)
+                        cachedSubPositions.Add(vPos);
+                }
+            }
+            foreach (var vSubOct in vSubOcts)
+            {
+                TGVector6x3[] vInputOcts = new TGVector6x3[1];
+                vInputOcts[0] = vSubOct;
+                var fComp = TGGetOctVolume(_vector3sToFloats(_vector63sToVector3s(vInputOcts)));
+                if (fComp > probeGen.fMinSubVolume)
+                {
+                    foreach (var vPos in vSubOct.vectors)
+                        cachedSubPositions.Add(vPos);
+                }
             }
         }
     }
@@ -1050,7 +1167,7 @@ public class InfProbeGenInspector : Editor
                     vTet.vectors[2] = probeGen.vTetPositions[probeGen.vTetIndices[iTet]._2];
                     vTet.vectors[3] = probeGen.vTetPositions[probeGen.vTetIndices[iTet]._3];
 
-                    _subdivideTet(vTet);
+                    _subdivideTet(vTet, occludeMap[iTet]);
                     ++iSubdivideCount;
                 }
             }
