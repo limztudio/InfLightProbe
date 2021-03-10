@@ -497,7 +497,7 @@ public class InfProbeFinder : MonoBehaviour
 
                 bProbeLost = false;
             }
-            else if(!bProbeLost)
+            else if(bProbeLost)
             {
                 shColor = new SHShaderColor();
                 {
