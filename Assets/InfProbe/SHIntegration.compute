@@ -20,22 +20,17 @@ groupshared float3 BufTmpCoeffAcc[MAP_SIZE][COFF_COUNT];
 
 
 void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
-    // cosine kernel
-    const float a0 = 3.141593f;
-    const float a1 = 2.095395f;
-    const float a2 = 0.785398f;
-
     const float z2 = n.z * n.z;
 
     // l=0
     const float p_0_0 = (0.282094791773878140f);
-    sh[0] = color * (p_0_0) * a0; // l=0,m=0
+    sh[0] = color * (p_0_0); // l=0,m=0
     // l=1
     const float p_1_0 = (0.488602511902919920f) * n.z;
-    sh[2] = color * (p_1_0) * a1; // l=1,m=0
+    sh[2] = color * (p_1_0); // l=1,m=0
     // l=2
     const float p_2_0 = (0.946174695757560080f) * z2 + (-0.315391565252520050f);
-    sh[6] = color * (p_2_0) * a2; // l=2,m=0
+    sh[6] = color * (p_2_0); // l=2,m=0
 
 
     const float s1 = n.y;
@@ -43,13 +38,13 @@ void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
 
     // l=1
     const float p_1_1 = (-0.488602511902919920f);
-    sh[1] = color * (p_1_1 * s1) * a1; // l=1,m=-1
-    sh[3] = color * (p_1_1 * c1) * a1; // l=1,m=+1
+    sh[1] = color * (p_1_1 * s1); // l=1,m=-1
+    sh[3] = color * (p_1_1 * c1); // l=1,m=+1
 
     // l=2
     const float p_2_1 = (-1.092548430592079200f) * n.z;
-    sh[5] = color * (p_2_1 * s1) * a2; // l=2,m=-1
-    sh[7] = color * (p_2_1 * c1) * a2; // l=2,m=+1
+    sh[5] = color * (p_2_1 * s1); // l=2,m=-1
+    sh[7] = color * (p_2_1 * c1); // l=2,m=+1
 
 
     const float s2 = n.x * s1 + n.y * c1;
@@ -57,8 +52,8 @@ void projectOntoSH(in float3 n, in float3 color, out float3 sh[COFF_COUNT]){
 
     // l=2
     const float p_2_2 = (0.546274215296039590f);
-    sh[4] = color * (p_2_2 * s2) * a2; // l=2,m=-2
-    sh[8] = color * (p_2_2 * c2) * a2; // l=2,m=+2
+    sh[4] = color * (p_2_2 * s2); // l=2,m=-2
+    sh[8] = color * (p_2_2 * c2); // l=2,m=+2
 }
 
 
