@@ -61,6 +61,8 @@ public class InfProbeGenInspector : Editor
 {
     private const float RAY_COMP_EPSILON = 0.000001f;
     private const int PROBE_RENDER_SIZE = 64;
+    private const int PROBE_COFF_COUNT = 9;
+    private const int RENDER_FACE_COUNT = 6;
 
 
     private InfProbeGen probeGen;
@@ -401,7 +403,7 @@ public class InfProbeGenInspector : Editor
 
     private void _rebuildSH(
         ref Camera tmpCamera,
-        ref Cubemap tmpTexture,
+        ref RenderTexture tmpTexture,
         float fTotalWeight,
         Vector3 vPos,
         out SHColor vSH
@@ -420,12 +422,12 @@ public class InfProbeGenInspector : Editor
             var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
             probeGen.shdSHIntegrator.SetTexture(iKernel, "TexEnv", tmpTexture);
             probeGen.shdSHIntegrator.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
-            probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, 6);
+            probeGen.shdSHIntegrator.Dispatch(iKernel, 1, PROBE_RENDER_SIZE, RENDER_FACE_COUNT);
 
             iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
             probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[1]);
             probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
-            probeGen.shdSHReductor1.Dispatch(iKernel, 1, 6, 1);
+            probeGen.shdSHReductor1.Dispatch(iKernel, 1, RENDER_FACE_COUNT, 1);
 
             iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
             probeGen.shdSHReductor2.SetFloat("FltTotalWeight", fTotalWeight);
@@ -433,7 +435,7 @@ public class InfProbeGenInspector : Editor
             probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[1]);
             probeGen.shdSHReductor2.Dispatch(iKernel, 1, 1, 1);
 
-            var vRawSH = new float[9 * 3];
+            var vRawSH = new float[PROBE_COFF_COUNT * 3];
             bufTmpBuffers[1].GetData(vRawSH);
             vSH.SH = _floatsToVector3s(vRawSH);
 
@@ -534,7 +536,7 @@ public class InfProbeGenInspector : Editor
 
     private void _subdivideTet(
         ref Camera tmpCamera,
-        ref Cubemap tmpTexture,
+        ref RenderTexture tmpTexture,
         float fTotalWeight,
         TGVector4x3 vParentTet
         )
@@ -637,7 +639,7 @@ public class InfProbeGenInspector : Editor
     }
     private void _subdivideOct(
         ref Camera tmpCamera,
-        ref Cubemap tmpTexture,
+        ref RenderTexture tmpTexture,
         float fTotalWeight,
         TGVector6x3 vParentOct
         )
@@ -745,13 +747,17 @@ public class InfProbeGenInspector : Editor
 
         var tmpObject = new GameObject("ProbeCamera");
         var tmpCamera = tmpObject.AddComponent<Camera>();
-        var tmpTexture = new Cubemap(PROBE_RENDER_SIZE, TextureFormat.RGB24, false);
+        var tmpTexture = new RenderTexture(PROBE_RENDER_SIZE, PROBE_RENDER_SIZE, 16);
         {
-            tmpCamera.allowHDR = false;
+            tmpTexture.dimension = TextureDimension.Cube;
+
+            //tmpCamera.renderingPath = RenderingPath.DeferredShading;
+            //tmpCamera.allowHDR = true;
             tmpCamera.allowMSAA = false;
             tmpCamera.backgroundColor = new Color(0.192157f, 0.3019608f, 0.4745098f);
             tmpCamera.aspect = 1.0f;
-            tmpCamera.nearClipPlane = 0.0001f;
+            tmpCamera.fieldOfView = 90.0f;
+            tmpCamera.nearClipPlane = 0.001f;
             tmpCamera.farClipPlane = 1000.0f;
             //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
             tmpCamera.clearFlags = CameraClearFlags.Skybox;
@@ -1156,8 +1162,8 @@ public class InfProbeGenInspector : Editor
     {
         probeGen = (InfProbeGen)target;
 
-        bufTmpBuffers[0] = new ComputeBuffer(6 * 9 * 3, sizeof(float));
-        bufTmpBuffers[1] = new ComputeBuffer(6 * PROBE_RENDER_SIZE * 9 * 3, sizeof(float));
+        bufTmpBuffers[0] = new ComputeBuffer(RENDER_FACE_COUNT * PROBE_COFF_COUNT * 3, sizeof(float));
+        bufTmpBuffers[1] = new ComputeBuffer(RENDER_FACE_COUNT * PROBE_RENDER_SIZE * PROBE_COFF_COUNT * 3, sizeof(float));
 
         _updateLineList();
     }

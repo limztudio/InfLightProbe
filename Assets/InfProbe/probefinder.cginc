@@ -26,7 +26,7 @@ inline half3 getIrradiance(half3 vNormal){
         vBase1.x = vNormal.y;
         vBase1.y = vNormal.z;
         vBase1.z = vNormal.x;
-        vBase1.w = vNormal.x * vNormal.y + vNormal.y * vNormal.x;
+        vBase1.w = vNormal.x * vNormal.y;
 
         vBase2.x = vNormal.z * vNormal.y;
         vBase2.y = vNormal.z * vNormal.z;

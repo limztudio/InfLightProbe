@@ -3,6 +3,7 @@
 
 #define MAP_SIZE 64
 #define COFF_COUNT 9
+#define FACE_COUNT 6
 
 
 Buffer<float> BufCoeff;

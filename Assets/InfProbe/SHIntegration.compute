@@ -3,6 +3,7 @@
 
 #define MAP_SIZE 64
 #define COFF_COUNT 9
+#define FACE_COUNT 6
 
 
 TextureCube<float3> TexEnv;
@@ -68,7 +69,7 @@ void CSMain(
     // cube map coordinate based on SHMath of DirectXMath
     float3 vCubeCoord;
     [flatten]
-    switch(uDispatchThreadID.z){
+    switch(uGroupID.z){
     case 0: // positive X
         vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
         vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
