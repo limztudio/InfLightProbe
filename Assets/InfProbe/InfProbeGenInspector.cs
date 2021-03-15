@@ -70,6 +70,7 @@ public class InfProbeGenInspector : Editor
     private List<InfProbeFinder> probeFinderList = new List<InfProbeFinder>();
     private List<Renderer> probeFinderRendererList = new List<Renderer>();
     private List<MeshFilter> renderableMeshList = new List<MeshFilter>();
+    private List<Light> lightList = new List<Light>();
 
     private Dictionary<Vector3, SHColor> cachedSHList = new Dictionary<Vector3, SHColor>();
     private HashSet<Vector3> cachedSubPositions = new HashSet<Vector3>();
@@ -88,7 +89,7 @@ public class InfProbeGenInspector : Editor
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGGetTetIntraIndices(uint[] vOut);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void TGGetTetAjacentIndices(uint[] vOut);
+    private static extern void TGGetTetAdjacentIndices(uint[] vOut);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void TGGetTetBaryMatrices(float[] vOut);
     [DllImport("tetgen_x64.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -324,9 +325,23 @@ public class InfProbeGenInspector : Editor
         probeFinderList.Clear();
         probeFinderRendererList.Clear();
         renderableMeshList.Clear();
+        lightList.Clear();
 
         foreach (var gObj in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
         {
+            if (!EditorUtility.IsPersistent(gObj.transform.root.gameObject) && !(gObj.hideFlags == HideFlags.NotEditable || gObj.hideFlags == HideFlags.HideAndDontSave))
+            {
+                foreach (var light in gObj.GetComponentsInChildren<Light>(false))
+                {
+                    if (light.type == LightType.Area)
+                        continue;
+                    if (light.type == LightType.Directional)
+                        continue;
+
+                    lightList.Add(light);
+                }
+            }
+
             if (!gObj.activeSelf)
                 continue;
             if (gObj.hideFlags == HideFlags.HideInHierarchy)
@@ -835,6 +850,11 @@ public class InfProbeGenInspector : Editor
             }
         }
 
+        {
+            foreach (var light in lightList)
+                cachedSubPositions.Add(light.transform.position);
+        }
+
         int oldTetCount = -1;
         do {
             {
@@ -969,7 +989,7 @@ public class InfProbeGenInspector : Editor
                     probeGen.vSHColors[i] = vTmpSHColors[i];
 
                 uint[] uRawSubAdjIndices = new uint[iTetCount * 4];
-                TGGetTetAjacentIndices(uRawSubAdjIndices);
+                TGGetTetAdjacentIndices(uRawSubAdjIndices);
                 probeGen.vTetAdjIndices = _prb_uintsToInt4s(uRawSubAdjIndices);
 
                 float[] fRawSubBaryMatrices = new float[iTetCount * 4 * 3];
