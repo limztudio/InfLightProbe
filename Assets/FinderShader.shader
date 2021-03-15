@@ -44,7 +44,9 @@ Shader "Custom/FinderShader"
 
                 v2f o;
 
-                o.irradiance = getIrradiance(vNormalM);
+                o.irradiance = getIrradiance(half4(vNormalM, 1.h));
+                //o.irradiance = ShadeSH9(half4(vNormalM, 1.h));
+
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 UNITY_TRANSFER_FOG(o,o.vertex);
