@@ -801,7 +801,7 @@ public class InfProbeGenInspector : Editor
                 }
             }
             fTotalWeight *= 6.0f;
-            fTotalWeight = (4.0f * 3.14159f) / fTotalWeight;
+            fTotalWeight = (4.0f * 3.141592653589793238f) / fTotalWeight;
         }
 
         {
