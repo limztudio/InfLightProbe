@@ -432,6 +432,7 @@ public class InfProbeGenInspector : Editor
         {
             tmpCamera.transform.position = vPos;
             tmpCamera.transform.rotation = Quaternion.identity;
+            tmpTexture.Release();
             tmpCamera.RenderToCubemap(tmpTexture);
 
             var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
