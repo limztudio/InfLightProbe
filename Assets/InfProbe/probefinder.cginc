@@ -20,9 +20,9 @@ inline half3 getIrradiance(half4 vNormal){
 
     vReturn = max(0.h, vReturn);
 
-//#ifdef UNITY_COLORSPACE_GAMMA
+#ifdef UNITY_COLORSPACE_GAMMA
 //    vReturn = LinearToGammaSpace(vReturn);
-//#endif
+#endif
 
     return vReturn;
 }

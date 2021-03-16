@@ -426,13 +426,15 @@ public class InfProbeGenInspector : Editor
     {
         if (cachedSHList.ContainsKey(vPos))
         {
-            vSH = cachedSHList[vPos];
+            var vStoreSH = cachedSHList[vPos];
+            vSH.SH = new Vector3[9];
+            for (int i = 0; i < 9; ++i)
+                vSH.SH[i] = vStoreSH.SH[i];
         }
         else
         {
             tmpCamera.transform.position = vPos;
             tmpCamera.transform.rotation = Quaternion.identity;
-            tmpTexture.Release();
             tmpCamera.RenderToCubemap(tmpTexture);
 
             var iKernel = probeGen.shdSHIntegrator.FindKernel("CSMain");
@@ -455,7 +457,11 @@ public class InfProbeGenInspector : Editor
             bufTmpBuffers[1].GetData(vRawSH);
             vSH.SH = _floatsToVector3s(vRawSH);
 
-            cachedSHList.Add(vPos, vSH);
+            var vStoreSH = new SHColor();
+            vStoreSH.SH = new Vector3[9];
+            for (int i = 0; i < 9; ++i)
+                vStoreSH.SH[i] = vSH.SH[i];
+            cachedSHList.Add(vPos, vStoreSH);
         }
     }
 
