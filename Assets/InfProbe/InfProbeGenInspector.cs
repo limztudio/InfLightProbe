@@ -445,7 +445,7 @@ public class InfProbeGenInspector : Editor
             probeGen.shdSHReductor1.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[0]);
             probeGen.shdSHReductor1.Dispatch(iKernel, 1, RENDER_FACE_COUNT, 1);
 
-            iKernel = probeGen.shdSHReductor1.FindKernel("CSMain");
+            iKernel = probeGen.shdSHReductor2.FindKernel("CSMain");
             probeGen.shdSHReductor2.SetFloat("FltTotalWeight", fTotalWeight);
             probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeff", bufTmpBuffers[0]);
             probeGen.shdSHReductor2.SetBuffer(iKernel, "BufCoeffAcc", bufTmpBuffers[1]);
