@@ -124,6 +124,10 @@ void CSMain(
     const float fDiffSolid = (4.f / fSolidDot) * fSolidDotSqrtInv;
 
     float3 vColor = TexEnv.SampleLevel(samplerTexEnv, vCubeCoord, 0);
+#ifdef UNITY_COLORSPACE_GAMMA
+    // linear to gamma space
+    vColor = vColor * (vColor * (vColor * 0.305306011f + float3(0.682171111f, 0.682171111f, 0.682171111f)) + float3(0.012522878f, 0.012522878f, 0.012522878f));
+#endif
     vColor *= fDiffSolid;
 
     float3 vSH[COFF_COUNT];

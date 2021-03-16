@@ -139,7 +139,7 @@ public class SHTester : MonoBehaviour
 
         shColor = new SHShaderColor();
 
-        shTexture = new RenderTexture(PROBE_RENDER_SIZE, PROBE_RENDER_SIZE, 24);
+        shTexture = new RenderTexture(PROBE_RENDER_SIZE, PROBE_RENDER_SIZE, 16);
         shTexture.dimension = TextureDimension.Cube;
     }
     public void ReleaseUnit()
@@ -152,7 +152,7 @@ public class SHTester : MonoBehaviour
         var tmpObject = new GameObject("ProbeCamera");
         var tmpCamera = tmpObject.AddComponent<Camera>();
         {
-            //tmpCamera.renderingPath = RenderingPath.DeferredShading;
+            tmpCamera.renderingPath = RenderingPath.DeferredShading;
             //tmpCamera.allowHDR = true;
             tmpCamera.allowMSAA = false;
             tmpCamera.backgroundColor = new Color(0.192157f, 0.3019608f, 0.4745098f);

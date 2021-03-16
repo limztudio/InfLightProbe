@@ -773,7 +773,7 @@ public class InfProbeGenInspector : Editor
         {
             tmpTexture.dimension = TextureDimension.Cube;
 
-            //tmpCamera.renderingPath = RenderingPath.DeferredShading;
+            tmpCamera.renderingPath = RenderingPath.DeferredShading;
             //tmpCamera.allowHDR = true;
             tmpCamera.allowMSAA = false;
             tmpCamera.backgroundColor = new Color(0.192157f, 0.3019608f, 0.4745098f);

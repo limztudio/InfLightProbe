@@ -44,7 +44,7 @@ Shader "Custom/FinderShader"{
                 half4 col = texCUBE(_MainTex, vNormalM);
 
                 //col.rgb = getIrradiance(half4(vNormalM, 1.h));
-                //col.rgb = ShadeSH9(half4(vNormalM, 1.h));
+                col.rgb = ShadeSH9(half4(vNormalM, 1.h));
 
                 col.a = 1;
 
