@@ -1,66 +1,53 @@
-Shader "Custom/FinderShader"
-{
-    Properties
-    {
+Shader "Custom/FinderShader"{
+    Properties{
         _MainTex ("Texture", 2D) = "white" {}
     }
-    SubShader
-    {
-        Tags { "RenderType"="Opaque" }
+    SubShader{
+        Tags{ "RenderType"="Opaque" }
         LOD 100
 
-        Pass
-        {
+        Pass{
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
 
             #include "UnityCG.cginc"
             #include "InfProbe/probeFinder.cginc"
 
-            struct appdata
-            {
+            struct appdata{
                 float4 vertex : POSITION;
-                float3 normal : NORMAL0;
-                float2 uv : TEXCOORD0;
+                float3 normal : NORMAL;
             };
 
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
-                float3 irradiance : TEXCOORD2;
+            struct v2f{
+                float3 normal : TEXCOORD0;
                 float4 vertex : SV_POSITION;
             };
 
-            sampler2D _MainTex;
+            samplerCUBE _MainTex;
             float4 _MainTex_ST;
 
-            v2f vert (appdata v)
-            {
-                half3 vNormalM = normalize(mul(v.normal, (float3x3)unity_WorldToObject));
+            v2f vert(appdata v){
+                half3 vNormalM = mul((float3x3)unity_ObjectToWorld, v.normal);
 
                 v2f o;
 
-                o.irradiance = getIrradiance(half4(vNormalM, 1.h));
-                //o.irradiance = ShadeSH9(half4(vNormalM, 1.h));
-
+                o.normal = vNormalM;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
 
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
-            {
-                half4 col = tex2D(_MainTex, i.uv);
+            fixed4 frag(v2f i) : SV_Target{
+                float3 vNormalM = normalize(i.normal);
 
-                col.rgb = i.irradiance;
+                half4 col = texCUBE(_MainTex, vNormalM);
 
-                UNITY_APPLY_FOG(i.fogCoord, col);
+                //col.rgb = getIrradiance(half4(vNormalM, 1.h));
+                //col.rgb = ShadeSH9(half4(vNormalM, 1.h));
+
+                col.a = 1;
+
                 return col;
             }
             ENDCG

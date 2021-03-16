@@ -779,7 +779,7 @@ public class InfProbeGenInspector : Editor
             tmpCamera.backgroundColor = new Color(0.192157f, 0.3019608f, 0.4745098f);
             tmpCamera.aspect = 1.0f;
             tmpCamera.fieldOfView = 90.0f;
-            tmpCamera.nearClipPlane = 0.001f;
+            tmpCamera.nearClipPlane = 0.0001f;
             tmpCamera.farClipPlane = 1000.0f;
             //tmpCamera.clearFlags = CameraClearFlags.SolidColor;
             tmpCamera.clearFlags = CameraClearFlags.Skybox;
@@ -1204,7 +1204,7 @@ public class InfProbeGenInspector : Editor
     {
         base.OnInspectorGUI();
 
-        if(GUILayout.Button("Rebuild Probes"))
+        if (GUILayout.Button("Rebuild Probes"))
             _rebuildProbes();
     }
 

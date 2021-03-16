@@ -66,41 +66,47 @@ void CSMain(
     uint uGuroupIndex : SV_GroupIndex
 )
 {
+    const float fSize = float(MAP_SIZE);
+    const float fPicSize = 1.f / fSize;
+
+    const float fB = -1.f + fPicSize;
+    const float fS = (2.f * (1.f - fPicSize) / (fSize - 1.f));
+
     // cube map coordinate based on SHMath of DirectXMath
     float3 vCubeCoord;
     [flatten]
     switch(uGroupID.z){
     case 0: // positive X
-        vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
-        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) * fPicSize;
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) * fPicSize;
         vCubeCoord.x = 1.f;
         break;
     case 1: // negative X
-        vCubeCoord.z = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
-        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) * fPicSize;
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) * fPicSize;
         vCubeCoord.x = -1.f;
         break;
 
     case 2: // positive Y
-        vCubeCoord.z = -1.f + (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = -1.f + (2.f * float(uDispatchThreadID.y) + 1.f) * fPicSize;
         vCubeCoord.y = 1.f;
-        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) * fPicSize;
         break;
     case 3: // negative Y
-        vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.z = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) * fPicSize;
         vCubeCoord.y = -1.f;
-        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) * fPicSize;
         break;
 
     case 4: // positive Z
         vCubeCoord.z = 1.f;
-        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) * fPicSize;
+        vCubeCoord.x = -1.f + (2.f * float(uDispatchThreadID.x) + 1.f) * fPicSize;
         break;
     case 5: // negative Z
         vCubeCoord.z = -1.f;
-        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) / float(MAP_SIZE);
-        vCubeCoord.x = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) / float(MAP_SIZE);
+        vCubeCoord.y = 1.f - (2.f * float(uDispatchThreadID.y) + 1.f) * fPicSize;
+        vCubeCoord.x = 1.f - (2.f * float(uDispatchThreadID.x) + 1.f) * fPicSize;
         break;
 
     default: // error
@@ -111,8 +117,6 @@ void CSMain(
     }
     vCubeCoord = normalize(vCubeCoord);
 
-    const float fB = -1.f + 1.f / float(MAP_SIZE);
-    const float fS = (2.f * (1.f - 1.f / float(MAP_SIZE)) / (float(MAP_SIZE) - 1.f));
     const float3 vSolidUV = float3(float(uDispatchThreadID.x) * fS + fB, float(uDispatchThreadID.y) * fS + fB, 1.f);
     const float fSolidDot = dot(vSolidUV, vSolidUV);
     const float fSolidDotSqrtInv = rsqrt(fSolidDot);

@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.Rendering;
 
+
 [CustomEditor(typeof(InfProbeFinder))]
 public class InfProbeFinderInspector : Editor
 {
