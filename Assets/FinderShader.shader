@@ -53,5 +53,7 @@ Shader "Custom/FinderShader"{
             ENDCG
         }
     }
+
+    Fallback "Diffuse"
 }
 
