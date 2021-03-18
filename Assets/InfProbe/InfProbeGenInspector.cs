@@ -59,7 +59,6 @@ class TGRenderLine
 [CustomEditor(typeof(InfProbeGen))]
 public class InfProbeGenInspector : Editor
 {
-    private const float RAY_COMP_EPSILON = 0.000001f;
     private const int PROBE_RENDER_SIZE = 64;
     private const int PROBE_COFF_COUNT = 9;
     private const int RENDER_FACE_COUNT = 6;
